@@ -2962,6 +2962,16 @@ distinquish shallow and deep.
 Default: 'ZM' unless using 'UNICON', 'SPCAM' or 'pbl=none'
 </entry>
 
+<entry id="nn_weights" type="char*132" input_pathname="abs" category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Path to the neural net weights used for the YOG deep convection scheme
+</entry>
+
+<entry id="SAM_sounding" type="char*132" input_pathname="abs" category="conv"
+       group="phys_ctl_nl" valid_values="" >
+Path to the SAM sounding profile used for the YOG deep convection scheme
+</entry>
+
 <entry id="microp_scheme" type="char*16" category="conv"
        group="phys_ctl_nl" valid_values="RK,MG,SPCAM_m2005,SPCAM_sam1mom" >
 Type of microphysics scheme employed.  'RK' for Rasch and Kristjansson
