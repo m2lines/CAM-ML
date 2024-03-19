@@ -1412,7 +1412,9 @@
 <deep_scheme phys='spcam_sam1mom'>SPCAM    </deep_scheme>
 <deep_scheme phys='spcam_m2005'  >SPCAM    </deep_scheme>
 
-<run_deep_comp>off </run_deep_comp>
+<nn_weights                      >NONE</nn_weights>
+<SAM_sounding                    >NONE</SAM_sounding>
+<run_deep_comp                   >off </run_deep_comp>
 
 <shallow_scheme pbl="none"         >NONE     </shallow_scheme>
 <shallow_scheme pbl="uw"           >UW       </shallow_scheme>
