@@ -2962,6 +2962,14 @@ distinquish shallow and deep.
 Default: 'ZM' unless using 'UNICON', 'SPCAM' or 'pbl=none'
 </entry>
 
+<entry id="run_deep_comp" type="char*16" category="conv"
+       group="phys_ctl_nl" valid_values="off,on">
+Whether or not to use both schemes for deep convection.
+   'off' just run scheme specified by deep_scheme
+   'on'  use scheme specified by deep_scheme, but also run other to compare
+Default: off
+</entry>
+
 <entry id="nn_weights" type="char*132" input_pathname="abs" category="conv"
        group="phys_ctl_nl" valid_values="" >
 Path to the neural net weights used for the YOG deep convection scheme

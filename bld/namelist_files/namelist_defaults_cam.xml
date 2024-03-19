@@ -1412,6 +1412,8 @@
 <deep_scheme phys='spcam_sam1mom'>SPCAM    </deep_scheme>
 <deep_scheme phys='spcam_m2005'  >SPCAM    </deep_scheme>
 
+<run_deep_comp>off </run_deep_comp>
+
 <shallow_scheme pbl="none"         >NONE     </shallow_scheme>
 <shallow_scheme pbl="uw"           >UW       </shallow_scheme>
 <shallow_scheme pbl="uw" unicon="1">UNICON   </shallow_scheme>
