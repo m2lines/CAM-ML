@@ -52,6 +52,10 @@ module physpkg
   character(len=16) :: shallow_scheme
   character(len=16) :: macrop_scheme
   character(len=16) :: microp_scheme
+  character(len=16) :: deep_scheme    ! default set in phys_control.F90, use namelist to change
+  character(len=136) :: nn_weights    ! location of weights for the YOG NN, set in namelist
+  character(len=136) :: SAM_sounding  ! location of SAM sounding profile for the YOG NN, set in namelist
+  character(len=16) :: run_deep_comp  ! run comparison of deep convection schemes ZM and YOG
   integer           :: cld_macmic_num_steps    ! Number of macro/micro substeps
   logical           :: do_clubb_sgs
   logical           :: use_subcol_microp   ! if true, use subcolumns in microphysics
@@ -157,6 +161,10 @@ contains
 
     ! Get physics options
     call phys_getopts(shallow_scheme_out       = shallow_scheme, &
+                      deep_scheme_out          = deep_scheme, &
+                      nn_weights_out           = nn_weights, &
+                      SAM_sounding_out         = SAM_sounding, &
+                      run_deep_comp_out        = run_deep_comp, &
                       macrop_scheme_out        = macrop_scheme,   &
                       microp_scheme_out        = microp_scheme,   &
                       cld_macmic_num_steps_out = cld_macmic_num_steps, &
