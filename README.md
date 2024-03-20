@@ -14,6 +14,14 @@ tag.
 
 ## Using this model in a CESM Run
 
+### Obtaining CESM
+
+Clone a copy of CESM from git and checkout the `cesm2.1.5` tag on which this work is based:
+```
+git clone https://github.com/escomp/cesm.git my_cesm_sandbox_2_1
+git checkout cesm2.1.5
+```
+
 ### Setting CAM version in CESM
 
 To use this model in a CESM run you need to modify the `Externals.cfg` file in the
@@ -24,9 +32,16 @@ branch = CAM-ML
 protocol = git
 repo_url = https://github.com/m2lines/CAM-ML
 local_path = components/cam
+externals = Externals_CAM.cfg
 required = True
 ```
 This will pull the `CAM-ML` branch of this repo in as the CAM component.
+
+You can now run, from within the CESM root directory,
+```
+./manage_externals/checkout_externals
+```
+to fetch the external components.
 
 ### Creating and running a case
 
@@ -34,7 +49,7 @@ Details on creating a case can be found
 [here](https://ncar.github.io/CAM/doc/build/html/CAM6.0_users_guide/building-and-running-cam.html) on the NCAR website.
 For this work we are using the gate III testcase which can be set up by running:
 ```
-./create_newcase --case test_scam_gateIII_clean --compset FSCAM --res T42_T42 --user-mods-dir ../../components/cam/cime_config/usermods_dirs/scam_gateIII --project NCGD0054
+./create_newcase --case <path_to_testcase_directory> --compset FSCAM --res T42_T42 --user-mods-dir ../../components/cam/cime_config/usermods_dirs/scam_gateIII --project NCGD0054
 ```
 from `<cesm_root>/cime/scripts/`.
 
@@ -43,10 +58,11 @@ This is a CAM namelist generated from the default for the case.
 Add the following lines:
 
 1. `deep_scheme = 'YOG'`\
-    This will be the identifier for our new convection scheme.
-2. `nn_weights = '<PATH/TO/WEIGHTS.nc>'`\
+    This will be the identifier for our new convection scheme.\
+    If running a comparison to the ZM scheme also add `run_deep_comp = 'on'`.
+3. `nn_weights = '<PATH/TO/WEIGHTS.nc>'`\
     The path to the nn weights.
-3. `SAM_sounding = '<PATH/TO/SAM/SOUNDING.nc>'`\
+4. `SAM_sounding = '<PATH/TO/SAM/SOUNDING.nc>'`\
     The path to the SAM sounding for the NN.\
     This file is generated using the `sounding_to_netcdf.py` script in the resources of the NN code.
 
