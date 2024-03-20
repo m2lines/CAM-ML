@@ -89,7 +89,7 @@ subroutine convect_deep_register
   call phys_getopts(deep_scheme_out = deep_scheme)
 
   select case ( deep_scheme )
-  case('ZM') !    Zhang-McFarlane (default)
+  case('ZM', 'YOG') !    Zhang-McFarlane (default)
      call zm_conv_register
 
   case('off', 'UNICON') ! Off needs to setup the following fields
@@ -143,6 +143,9 @@ subroutine convect_deep_init(pref_edge)
   case('SPCAM')
      if (masterproc) write(iulog,*)'convect_deep: deep convection done by SPCAM'
      return
+  case('YOG')
+     if (masterproc) write(iulog,*)'convect_deep: deep convection done by YOG'
+     call zm_conv_init(pref_edge)
   case default
      if (masterproc) write(iulog,*)'WARNING: convect_deep: no deep convection scheme. May fail.'
   end select
@@ -273,6 +276,17 @@ subroutine convect_deep_tend( &
           jctop, jcbot , &
           state   ,ptend   ,landfrac, pbuf)
 
+  case('YOG') !    Yuval-O'Gorman (running ZM for now)
+     call pbuf_get_field(pbuf, pblh_idx,  pblh)
+     call pbuf_get_field(pbuf, tpert_idx, tpert)
+
+     call zm_conv_tend( pblh    ,mcon    ,cme     , &
+          tpert   ,pflx    ,zdu      , &
+          rliq    ,rice    , &
+          ztodt   , &
+          jctop, jcbot , &
+          state   ,ptend   ,landfrac, pbuf)
+
   end select
 
   ! If we added temperature tendency to pbuf, set it now.
@@ -307,7 +321,10 @@ subroutine convect_deep_tend_2( state,  ptend,  ztodt, pbuf)
 
    if ( deep_scheme .eq. 'ZM' ) then  ! Zhang-McFarlane
       call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf) 
-   else
+   else if ( deep_scheme .eq. 'YOG' ) then  ! Yuval-O'Gorman
+      ! TODO Do nothing extra for now as seems to be a separate scheme
+      call zm_conv_tend_2( state,   ptend,  ztodt,  pbuf)
+    else
       call physics_ptend_init(ptend, state%psetcols, 'convect_deep')
    end if
 
