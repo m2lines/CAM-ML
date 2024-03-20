@@ -39,8 +39,9 @@ character(len=16) :: cam_physpkg          = unset_str  ! CAM physics package
 character(len=32) :: cam_chempkg          = unset_str  ! CAM chemistry package 
 character(len=16) :: waccmx_opt           = unset_str  ! WACCMX run option [ionosphere | neutral | off
 character(len=16) :: deep_scheme          = unset_str  ! deep convection package
-character(len=132) :: nn_weights         = unset_str  ! location of weights for the YOG NN, set in namelist
-character(len=132) :: SAM_sounding       = unset_str  ! location of SAM sounding
+character(len=132) :: nn_weights          = unset_str  ! location of weights for the YOG NN, set in namelist
+character(len=132) :: SAM_sounding        = unset_str  ! location of SAM sounding
+character(len=16) :: run_deep_comp        = unset_str  ! run comparison of deep convection schemes (ZM and YOG)
 character(len=16) :: shallow_scheme       = unset_str  ! shallow convection package
 character(len=16) :: eddy_scheme          = unset_str  ! vertical diffusion package
 character(len=16) :: microp_scheme        = unset_str  ! microphysics package
@@ -128,7 +129,7 @@ subroutine phys_ctl_readnl(nlfile)
       history_cesm_forcing, history_scwaccm_forcing, history_chemspecies_srf, &
       do_clubb_sgs, state_debug_checks, use_hetfrz_classnuc, use_gw_oro, use_gw_front, &
       use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, cld_macmic_num_steps, &
-      offline_driver, convproc_do_aer, nn_weights, SAM_sounding
+      offline_driver, convproc_do_aer, nn_weights, SAM_sounding, run_deep_comp
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -188,6 +189,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(convproc_do_aer,             1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(nn_weights,                  len(nn_weights),       mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(SAM_sounding,                len(SAM_sounding),     mpi_character, masterprocid, mpicom, ierr)
+   call mpi_bcast(run_deep_comp,               len(run_deep_comp),    mpi_character, masterprocid, mpicom, ierr)
 
    use_spcam       = (     cam_physpkg_is('spcam_sam1mom') &
                       .or. cam_physpkg_is('spcam_m2005'))
@@ -284,7 +286,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                         history_cesm_forcing_out, history_scwaccm_forcing_out, history_chemspecies_srf_out, &
                         cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
                         do_clubb_sgs_out, use_spcam_out, state_debug_checks_out, cld_macmic_num_steps_out, &
-                        offline_driver_out, convproc_do_aer_out, nn_weights_out, SAM_sounding_out)
+                        offline_driver_out, convproc_do_aer_out, nn_weights_out, SAM_sounding_out, run_deep_comp_out)
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
 !          deep_scheme_out   : deep convection scheme
@@ -298,6 +300,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    character(len=16), intent(out), optional :: deep_scheme_out
    character(len=136), intent(out), optional  :: nn_weights_out
    character(len=136), intent(out), optional  :: SAM_sounding_out
+   character(len=16), intent(out), optional :: run_deep_comp_out
    character(len=16), intent(out), optional :: shallow_scheme_out
    character(len=16), intent(out), optional :: eddy_scheme_out
    character(len=16), intent(out), optional :: microp_scheme_out
@@ -333,6 +336,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(deep_scheme_out         ) ) deep_scheme_out          = deep_scheme
    if ( present(nn_weights_out          ) ) nn_weights_out           = nn_weights
    if ( present(SAM_sounding_out        ) ) SAM_sounding_out         = SAM_sounding
+   if ( present(run_deep_comp_out       ) ) run_deep_comp_out        = run_deep_comp
    if ( present(shallow_scheme_out      ) ) shallow_scheme_out       = shallow_scheme
    if ( present(eddy_scheme_out         ) ) eddy_scheme_out          = eddy_scheme
    if ( present(microp_scheme_out       ) ) microp_scheme_out        = microp_scheme
