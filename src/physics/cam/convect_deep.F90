@@ -89,7 +89,10 @@ subroutine convect_deep_register
   call phys_getopts(deep_scheme_out = deep_scheme)
 
   select case ( deep_scheme )
-  case('ZM', 'YOG') !    Zhang-McFarlane (default)
+  case('ZM') !    Zhang-McFarlane (default)
+     call zm_conv_register
+
+  case('YOG') !    Yuval-O'Gorman
      call zm_conv_register
 
   case('off', 'UNICON') ! Off needs to setup the following fields
