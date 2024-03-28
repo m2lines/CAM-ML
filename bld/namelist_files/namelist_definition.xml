@@ -2957,7 +2957,7 @@ Default: 10
 <entry id="deep_scheme" type="char*16" category="conv"
        group="phys_ctl_nl" valid_values="ZM,UNICON,off,CLUBB_SGS,YOG" >
 Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
-'off' for none;'YOG' for Yanni-O'Gorman; or 'UNICON' which doesn't
+'off' for none;'YOG' for Yuval-O'Gorman; or 'UNICON' which doesn't
 distinquish shallow and deep.
 Default: 'ZM' unless using 'UNICON', 'SPCAM' or 'pbl=none'
 </entry>
