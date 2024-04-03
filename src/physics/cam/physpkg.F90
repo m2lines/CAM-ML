@@ -1959,6 +1959,7 @@ contains
          state,   ptend, cam_in%landfrac, pbuf)
 
     call physics_update(state, ptend, ztodt, tend)
+    ! NB: If we want to discard ZM tendencies here we need to call a ptend_dealloc
 
     call t_stopf('convect_deep_tend')
 
