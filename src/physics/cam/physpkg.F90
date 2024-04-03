@@ -747,6 +747,8 @@ contains
     use dadadj_cam,         only: dadadj_init
     use cam_abortutils,     only: endrun
     use nudging,            only: Nudge_Model, nudging_init
+    use cam_history,        only: addfld, horiz_only
+    use nn_interface_CAM,   only: nn_convection_flux_CAM_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -932,6 +934,23 @@ contains
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
+
+    ! Initialise YOG scheme
+    if (yog_scheme=='on') then
+        call nn_convection_flux_CAM_init(nn_weights, SAM_sounding)
+        if (masterproc) then
+           write(iulog,*)'nn_weights at: ', nn_weights
+           write(iulog,*)'SAM_sounding at: ', SAM_sounding
+           write(iulog,*)'YOG scheme initialised'
+           call addfld ('YOGDT',     (/ 'lev' /),  'A', 'K/s','T tendency - Yuval-OGorman moist convection')
+           call addfld ('YOGDQ',     (/ 'lev' /),  'A', 'kg/kg/s','Q tendency - Yuval-OGorman moist convection')
+           call addfld ('YOGDICE',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud ice tendency - Yuval-OGorman convection')
+           call addfld ('YOGDLIQ',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud liq tendency - Yuval-OGorman convection')
+           call addfld ('YOGPREC',   horiz_only ,  'A', 'Units?','Surface preciptation - Yuval-OGorman convection')
+           write(iulog,*)'YOG output fields added to buffer'
+        end if
+    end if
+
 
   end subroutine phys_init
 
