@@ -957,7 +957,6 @@ contains
         end if
     end if
 
-
   end subroutine phys_init
 
   !
@@ -1727,6 +1726,7 @@ contains
     use subcol,          only: subcol_gen, subcol_ptend_avg
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
     use qneg_module,     only: qneg3
+    use nn_interface_CAM, only: nn_convection_flux_CAM
 
     ! Arguments
 
@@ -1828,6 +1828,9 @@ contains
     real(r8) :: zero_tracers(pcols,pcnst)
 
     logical   :: lq(pcnst)
+    
+    real(r8) :: ftem(pcols,pver)              ! Temporary workspace for outfld variables
+    real(r8) :: yog_precsfc(pcols)
     !-----------------------------------------------------------------------
 
     call t_startf('bc_init')
@@ -1835,6 +1838,7 @@ contains
     zero = 0._r8
     zero_tracers(:,:) = 0._r8
     zero_sc(:) = 0._r8
+    ftem = 0._r8   
 
     lchnk = state%lchnk
     ncol  = state%ncol
@@ -1952,6 +1956,36 @@ contains
     call physics_update(state, ptend, ztodt, tend)
 
     call t_stopf('convect_deep_tend')
+
+    ! Yuval O'Gorman scheme
+    if (deep_scheme=='YOG') then
+        call t_startf('yog_nn')
+
+        lq(:) = .true.
+        call physics_ptend_init(ptend, state%psetcols, 'yogNN', ls=.true., lq=lq(:))! initialize ptend type for YOG
+
+        call nn_convection_flux_CAM(state%pmid(:,pver:1:-1), state%pint(:,pverp:1:-1), state%ps, &
+                                    state%t(:,pver:1:-1), state%q(:,pver:1:-1,1), &
+                                    state%q(:,pver:1:-1,ixcldliq), state%q(:,pver:1:-1,ixcldice), &
+                                    cpair, &
+                                    ztodt, &
+                                    ncol, pver, &
+                                    1, 1, 1, &
+                                    yog_precsfc, &
+                                    ptend%q(:,pver:1:-1,ixcldice), ptend%q(:,pver:1:-1,1), &
+                                    ptend%q(:,pver:1:-1,ixcldliq), ptend%s(:,pver:1:-1))
+
+        ftem(:ncol,:pver) = ptend%s(:ncol,:pver)/cpair
+        call outfld('YOGDT   ',ftem               ,pcols   ,lchnk   )
+        call outfld('YOGDQ   ',ptend%q(1,1,1) ,pcols   ,lchnk   )
+        call outfld('YOGDICE ',ptend%q(1,1,ixcldice) ,pcols   ,lchnk   )
+        call outfld('YOGDLIQ ',ptend%q(1,1,ixcldliq) ,pcols   ,lchnk   )
+        call outfld('YOGPREC ',yog_precsfc ,pcols   ,lchnk   )
+
+        call physics_update(state, ptend, ztodt, tend)
+        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+
+        call t_stopf('yog_nn')
 
     call pbuf_get_field(pbuf, prec_dp_idx, prec_dp )
     call pbuf_get_field(pbuf, snow_dp_idx, snow_dp )

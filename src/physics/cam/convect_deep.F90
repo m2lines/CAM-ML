@@ -79,7 +79,6 @@ subroutine convect_deep_register
   
   use physics_buffer, only : pbuf_add_field, dtype_r8
   use zm_conv_intr, only: zm_conv_register
-  use yog_conv_intr, only: yog_conv_register
   use phys_control, only: phys_getopts, use_gw_convect_dp
 
   implicit none
@@ -93,8 +92,8 @@ subroutine convect_deep_register
   case('ZM') !    Zhang-McFarlane (default)
      call zm_conv_register
 
-  case('YOG') !    Yuval-O'Gorman
-     call yog_conv_register
+  case('YOG') !   YOG - Running Zhang-McFarlane for now
+     call zm_conv_register
 
   case('off', 'UNICON') ! Off needs to setup the following fields
    call pbuf_add_field('ICWMRDP',    'physpkg',dtype_r8,(/pcols,pver/),icwmrdp_idx)
@@ -126,7 +125,6 @@ subroutine convect_deep_init(pref_edge)
   use pmgrid,         only: plevp
   use spmd_utils,     only: masterproc
   use zm_conv_intr,   only: zm_conv_init
-  use yog_conv_intr,  only: yog_conv_init
   use cam_abortutils, only: endrun
   
   use physics_buffer, only: physics_buffer_desc, pbuf_get_index
@@ -149,8 +147,8 @@ subroutine convect_deep_init(pref_edge)
      if (masterproc) write(iulog,*)'convect_deep: deep convection done by SPCAM'
      return
   case('YOG')
-     if (masterproc) write(iulog,*)'convect_deep: deep convection done by YOG'
-     call yog_conv_init(pref_edge)
+     if (masterproc) write(iulog,*)'convect_deep initializing Zhang-McFarlane convection inside YOG'
+     call zm_conv_init(pref_edge)
   case default
      if (masterproc) write(iulog,*)'WARNING: convect_deep: no deep convection scheme. May fail.'
   end select
@@ -188,7 +186,6 @@ subroutine convect_deep_tend( &
    use cam_history,    only: outfld
    use constituents,   only: pcnst
    use zm_conv_intr,   only: zm_conv_tend
-   use yog_conv_intr,  only: yog_conv_tend
    use cam_history,    only: outfld
    use physconst,      only: cpair
    use physics_buffer, only: physics_buffer_desc, pbuf_get_field
@@ -286,7 +283,7 @@ subroutine convect_deep_tend( &
      call pbuf_get_field(pbuf, pblh_idx,  pblh)
      call pbuf_get_field(pbuf, tpert_idx, tpert)
 
-     call yog_conv_tend( pblh    ,mcon    ,cme     , &
+     call zm_conv_tend( pblh    ,mcon    ,cme     , &
           tpert   ,pflx    ,zdu      , &
           rliq    ,rice    , &
           ztodt   , &
