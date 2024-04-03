@@ -1214,6 +1214,7 @@ contains
     use chemistry, only : chem_final
     use carma_intr, only : carma_final
     use wv_saturation, only : wv_sat_final
+    use nn_interface_CAM, only: nn_convection_flux_CAM_finalize
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -1234,6 +1235,10 @@ contains
     call chem_final
     call carma_final
     call wv_sat_final
+
+    if (yog_scheme=='on') then
+        call nn_convection_flux_CAM_finalize()
+    end if
 
   end subroutine phys_final
 
@@ -1980,6 +1985,7 @@ contains
         call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
 
         call t_stopf('yog_nn')
+    end if
 
     call pbuf_get_field(pbuf, prec_dp_idx, prec_dp )
     call pbuf_get_field(pbuf, snow_dp_idx, snow_dp )
