@@ -53,9 +53,6 @@ module physpkg
   character(len=16) :: macrop_scheme
   character(len=16) :: microp_scheme
   character(len=16) :: deep_scheme    ! default set in phys_control.F90, use namelist to change
-  character(len=136) :: nn_weights    ! location of weights for the YOG NN, set in namelist
-  character(len=136) :: SAM_sounding  ! location of SAM sounding profile for the YOG NN, set in namelist
-  character(len=16) :: run_deep_comp  ! run comparison of deep convection schemes ZM and YOG
   integer           :: cld_macmic_num_steps    ! Number of macro/micro substeps
   logical           :: do_clubb_sgs
   logical           :: use_subcol_microp   ! if true, use subcolumns in microphysics
@@ -162,9 +159,6 @@ contains
     ! Get physics options
     call phys_getopts(shallow_scheme_out       = shallow_scheme, &
                       deep_scheme_out          = deep_scheme, &
-                      nn_weights_out           = nn_weights, &
-                      SAM_sounding_out         = SAM_sounding, &
-                      run_deep_comp_out        = run_deep_comp, &
                       macrop_scheme_out        = macrop_scheme,   &
                       microp_scheme_out        = microp_scheme,   &
                       cld_macmic_num_steps_out = cld_macmic_num_steps, &
@@ -753,8 +747,7 @@ contains
     use dadadj_cam,         only: dadadj_init
     use cam_abortutils,     only: endrun
     use nudging,            only: Nudge_Model, nudging_init
-    use cam_history,        only: addfld, horiz_only
-    use nn_interface_CAM,   only: nn_convection_flux_CAM_init
+    use yog_intr,           only: yog_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -943,18 +936,7 @@ contains
 
     ! Initialise YOG scheme
     if (deep_scheme=='YOG') then
-        call nn_convection_flux_CAM_init(nn_weights, SAM_sounding)
-        if (masterproc) then
-           write(iulog,*)'nn_weights at: ', nn_weights
-           write(iulog,*)'SAM_sounding at: ', SAM_sounding
-           write(iulog,*)'YOG scheme initialised'
-           call addfld ('YOGDT',     (/ 'lev' /),  'A', 'K/s','T tendency - Yuval-OGorman moist convection')
-           call addfld ('YOGDQ',     (/ 'lev' /),  'A', 'kg/kg/s','Q tendency - Yuval-OGorman moist convection')
-           call addfld ('YOGDICE',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud ice tendency - Yuval-OGorman convection')
-           call addfld ('YOGDLIQ',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud liq tendency - Yuval-OGorman convection')
-           call addfld ('YOGPREC',   horiz_only ,  'A', 'Units?','Surface preciptation - Yuval-OGorman convection')
-           write(iulog,*)'YOG output fields added to buffer'
-        end if
+        call yog_init()
     end if
 
   end subroutine phys_init
@@ -1220,7 +1202,7 @@ contains
     use chemistry, only : chem_final
     use carma_intr, only : carma_final
     use wv_saturation, only : wv_sat_final
-    use nn_interface_CAM, only: nn_convection_flux_CAM_finalize
+    use yog_intr,           only: yog_final
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -1241,9 +1223,8 @@ contains
     call chem_final
     call carma_final
     call wv_sat_final
-
     if (deep_scheme=='YOG') then
-        call nn_convection_flux_CAM_finalize()
+       call yog_final()
     end if
 
   end subroutine phys_final
@@ -1731,7 +1712,7 @@ contains
     use subcol,          only: subcol_gen, subcol_ptend_avg
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
     use qneg_module,     only: qneg3
-    use nn_interface_CAM, only: nn_convection_flux_CAM
+    use yog_intr,        only: yog_tend
 
     ! Arguments
 
@@ -1833,9 +1814,8 @@ contains
     real(r8) :: zero_tracers(pcols,pcnst)
 
     logical   :: lq(pcnst)
-    
+
     real(r8) :: ftem(pcols,pver)              ! Temporary workspace for outfld variables
-    real(r8) :: yog_precsfc(pcols)
     !-----------------------------------------------------------------------
 
     call t_startf('bc_init')
@@ -1843,7 +1823,7 @@ contains
     zero = 0._r8
     zero_tracers(:,:) = 0._r8
     zero_sc(:) = 0._r8
-    ftem = 0._r8   
+    ftem = 0._r8
 
     lchnk = state%lchnk
     ncol  = state%ncol
@@ -1963,37 +1943,6 @@ contains
 
     call t_stopf('convect_deep_tend')
 
-    ! Yuval O'Gorman scheme
-    if (deep_scheme=='YOG') then
-        call t_startf('yog_nn')
-
-        lq(:) = .true.
-        call physics_ptend_init(ptend, state%psetcols, 'yogNN', ls=.true., lq=lq(:))! initialize ptend type for YOG
-
-        call nn_convection_flux_CAM(state%pmid(:,pver:1:-1), state%pint(:,pverp:1:-1), state%ps, &
-                                    state%t(:,pver:1:-1), state%q(:,pver:1:-1,1), &
-                                    state%q(:,pver:1:-1,ixcldliq), state%q(:,pver:1:-1,ixcldice), &
-                                    cpair, &
-                                    ztodt, &
-                                    ncol, pver, &
-                                    1, 1, 1, &
-                                    yog_precsfc, &
-                                    ptend%q(:,pver:1:-1,ixcldice), ptend%q(:,pver:1:-1,1), &
-                                    ptend%q(:,pver:1:-1,ixcldliq), ptend%s(:,pver:1:-1))
-
-        ftem(:ncol,:pver) = ptend%s(:ncol,:pver)/cpair
-        call outfld('YOGDT   ',ftem               ,pcols   ,lchnk   )
-        call outfld('YOGDQ   ',ptend%q(1,1,1) ,pcols   ,lchnk   )
-        call outfld('YOGDICE ',ptend%q(1,1,ixcldice) ,pcols   ,lchnk   )
-        call outfld('YOGDLIQ ',ptend%q(1,1,ixcldliq) ,pcols   ,lchnk   )
-        call outfld('YOGPREC ',yog_precsfc ,pcols   ,lchnk   )
-
-        call physics_update(state, ptend, ztodt, tend)
-        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
-
-        call t_stopf('yog_nn')
-    end if
-
     call pbuf_get_field(pbuf, prec_dp_idx, prec_dp )
     call pbuf_get_field(pbuf, snow_dp_idx, snow_dp )
     call pbuf_get_field(pbuf, prec_sh_idx, prec_sh )
@@ -2015,6 +1964,18 @@ contains
     snow_dp(:ncol) = snow_dp(:ncol) + rice(:ncol)
     call check_energy_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
     snow_dp(:ncol) = snow_dp(:ncol) - rice(:ncol)
+
+    ! Yuval O'Gorman scheme
+    if (deep_scheme=='YOG') then
+        call t_startf('yog_nn')
+
+        call yog_tend(ztodt, state, ptend)
+
+        ! call physics_update(state, ptend, ztodt, tend)
+        ! call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+
+        call t_stopf('yog_nn')
+    end if
 
     !
     ! Call Hack (1994) convection scheme to deal with shallow/mid-level convection
