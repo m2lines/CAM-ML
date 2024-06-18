@@ -25,10 +25,14 @@ module yog_intr
    ! Public methods
 
    public ::&
+      yog_readnl,             &! read namelist for YOG scheme/module
       yog_init,               &! initialize YOG scheme/module
       yog_final,              &! finalize YOG scheme/module
       yog_tend                 ! return tendencies
 
+   character(len=136) :: nn_weights    ! location of weights for the YOG NN, set in namelist
+   character(len=136) :: SAM_sounding  ! location of SAM sounding profile for the YOG NN, set in namelist
+   
 !=========================================================================================
 contains
 !=========================================================================================
@@ -48,45 +52,46 @@ contains
 
 !=========================================================================================
 
-! There is currently no need for a yog_readnl as variables are currently in the phys nl
-! subroutine yog_readnl(nlfile)
-! 
-!    use spmd_utils,      only: mpicom, masterproc, masterprocid, mpi_real8, mpi_integer, mpi_logical
-!    use namelist_utils,  only: find_group_name
-!    use units,           only: getunit, freeunit
-! 
-!    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
-! 
-!    ! Local variables
-!    integer :: unitn, ierr
-!    character(len=*), parameter :: subname = 'yog_readnl'
-! 
-!    namelist /yog_nl/ nn_weights, SAM_sounding
-!    !-----------------------------------------------------------------------------
-! 
-!    if (masterproc) then
-!       unitn = getunit()
-!       open( unitn, file=trim(nlfile), status='old' )
-!       call find_group_name(unitn, 'yog_nl', status=ierr)
-!       if (ierr == 0) then
-!          read(unitn, yog_nl, iostat=ierr)
-!          if (ierr /= 0) then
-!             call endrun(subname // ':: ERROR reading namelist')
-!          end if
-!       end if
-!       close(unitn)
-!       call freeunit(unitn)
-! 
-!    end if
-! 
-!    ! Broadcast namelist variables
-!    call mpi_bcast(yog_cin,           1, mpi_integer, masterprocid, mpicom, ierr)
-!    if (ierr /= 0) call endrun("yog_readnl: FATAL: mpi_bcast: yog_cin")
-! 
-! end subroutine yog_readnl
-! 
-! !=========================================================================================
-! 
+subroutine yog_readnl(nlfile)
+
+   use spmd_utils,      only: mpi_character, masterprocid, mpicom
+   use namelist_utils,  only: find_group_name
+   use units,           only: getunit, freeunit
+
+   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+
+   ! Local variables
+   integer :: unitn, ierr
+   character(len=*), parameter :: subname = 'yog_readnl'
+
+   namelist /yog_params_nl/ nn_weights, SAM_sounding
+   !-----------------------------------------------------------------------------
+
+   if (masterproc) then
+      unitn = getunit()
+      open( unitn, file=trim(nlfile), status='old' )
+      call find_group_name(unitn, 'yog_params_nl', status=ierr)
+      if (ierr == 0) then
+         read(unitn, yog_params_nl, iostat=ierr)
+         if (ierr /= 0) then
+            call endrun(subname // ':: ERROR reading namelist')
+         end if
+      end if
+      close(unitn)
+      call freeunit(unitn)
+
+   end if
+
+   ! Broadcast namelist variables
+   call mpi_bcast(nn_weights,   len(nn_weights),   mpi_character, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("yog_readnl: FATAL: mpi_bcast: nn_weights")
+   call mpi_bcast(SAM_sounding, len(SAM_sounding), mpi_character, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("yog_readnl: FATAL: mpi_bcast: SAM_sounding")
+
+end subroutine yog_readnl
+
+!=========================================================================================
+
 subroutine yog_init()
 
 !----------------------------------------
@@ -107,9 +112,6 @@ subroutine yog_init()
                             ! liquid budgets.
   integer :: history_budget_histfile_num ! output history file number for budget fields
 
-  character(len=136) :: nn_weights    ! location of weights for the YOG NN, set in namelist
-  character(len=136) :: SAM_sounding  ! location of SAM sounding profile for the YOG NN, set in namelist
-   
   ! Register fields with the output buffer
   call addfld ('YOGDT  ',   (/ 'lev' /),  'A', 'K/s','T tendency - Yuval-OGorman moist convection')
   call addfld ('YOGDQ  ',   (/ 'lev' /),  'A', 'kg/kg/s','Q tendency - Yuval-OGorman moist convection')
@@ -121,9 +123,7 @@ subroutine yog_init()
   end if
 
   call phys_getopts( history_budget_out = history_budget, &
-                     history_budget_histfile_num_out = history_budget_histfile_num, &
-                     nn_weights_out           = nn_weights, &
-                     SAM_sounding_out         = SAM_sounding)
+                     history_budget_histfile_num_out = history_budget_histfile_num)
 
   if ( history_budget ) then
      call add_default('YOGDT  ', history_budget_histfile_num, ' ')
@@ -134,9 +134,11 @@ subroutine yog_init()
   end if
 
   call nn_convection_flux_CAM_init(nn_weights, SAM_sounding)
+  if (masterproc) then
      write(iulog,*)'nn_weights at: ', nn_weights
      write(iulog,*)'SAM_sounding at: ', SAM_sounding
      write(iulog,*)'YOG scheme initialised'
+  endif
 
 end subroutine yog_init
 
