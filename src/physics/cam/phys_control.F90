@@ -39,8 +39,7 @@ character(len=16) :: cam_physpkg          = unset_str  ! CAM physics package
 character(len=32) :: cam_chempkg          = unset_str  ! CAM chemistry package 
 character(len=16) :: waccmx_opt           = unset_str  ! WACCMX run option [ionosphere | neutral | off
 character(len=16) :: deep_scheme          = unset_str  ! deep convection package
-character(len=132) :: nn_weights          = unset_str  ! location of weights for the YOG NN, set in namelist
-character(len=132) :: SAM_sounding        = unset_str  ! location of SAM sounding
+character(len=16) :: yog_scheme           = unset_str  ! YOG scheme package
 character(len=16) :: shallow_scheme       = unset_str  ! shallow convection package
 character(len=16) :: eddy_scheme          = unset_str  ! vertical diffusion package
 character(len=16) :: microp_scheme        = unset_str  ! microphysics package
@@ -120,7 +119,7 @@ subroutine phys_ctl_readnl(nlfile)
    character(len=*), parameter :: subname = 'phys_ctl_readnl'
 
    namelist /phys_ctl_nl/ cam_physpkg, use_simple_phys, cam_chempkg, waccmx_opt,  &
-      deep_scheme, shallow_scheme, &
+      deep_scheme, shallow_scheme, yog_scheme, &
       eddy_scheme, microp_scheme,  macrop_scheme, radiation_scheme, srf_flux_avg, &
       use_subcol_microp, atm_dep_flux, history_amwg, history_vdiag, history_aerosol, history_aero_optics, &
       history_eddy, history_budget,  history_budget_histfile_num, history_waccm, &
@@ -128,7 +127,7 @@ subroutine phys_ctl_readnl(nlfile)
       history_cesm_forcing, history_scwaccm_forcing, history_chemspecies_srf, &
       do_clubb_sgs, state_debug_checks, use_hetfrz_classnuc, use_gw_oro, use_gw_front, &
       use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, cld_macmic_num_steps, &
-      offline_driver, convproc_do_aer, nn_weights, SAM_sounding
+      offline_driver, convproc_do_aer
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -152,6 +151,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(cam_chempkg,                 len(cam_chempkg),      mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(waccmx_opt,                  len(waccmx_opt),       mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(shallow_scheme,              len(shallow_scheme),   mpi_character, masterprocid, mpicom, ierr)
+   call mpi_bcast(yog_scheme,                  len(yog_scheme),       mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(eddy_scheme,                 len(eddy_scheme),      mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(microp_scheme,               len(microp_scheme),    mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(radiation_scheme,            len(radiation_scheme), mpi_character, masterprocid, mpicom, ierr)
@@ -186,8 +186,6 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(cld_macmic_num_steps,        1,                     mpi_integer,   masterprocid, mpicom, ierr)
    call mpi_bcast(offline_driver,              1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(convproc_do_aer,             1,                     mpi_logical,   masterprocid, mpicom, ierr)
-   call mpi_bcast(nn_weights,                  len(nn_weights),       mpi_character, masterprocid, mpicom, ierr)
-   call mpi_bcast(SAM_sounding,                len(SAM_sounding),     mpi_character, masterprocid, mpicom, ierr)
 
    use_spcam       = (     cam_physpkg_is('spcam_sam1mom') &
                       .or. cam_physpkg_is('spcam_m2005'))
@@ -275,7 +273,7 @@ end function waccmx_is
 
 !===============================================================================
 
-subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, microp_scheme_out, &
+subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, yog_scheme_out, eddy_scheme_out, microp_scheme_out, &
                         radiation_scheme_out, use_subcol_microp_out, atm_dep_flux_out, &
                          history_amwg_out, history_vdiag_out, history_aerosol_out, history_aero_optics_out, history_eddy_out, &
                         history_budget_out, history_budget_histfile_num_out, &
@@ -284,11 +282,12 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                         history_cesm_forcing_out, history_scwaccm_forcing_out, history_chemspecies_srf_out, &
                         cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
                         do_clubb_sgs_out, use_spcam_out, state_debug_checks_out, cld_macmic_num_steps_out, &
-                        offline_driver_out, convproc_do_aer_out, nn_weights_out, SAM_sounding_out)
+                        offline_driver_out, convproc_do_aer_out)
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
 !          deep_scheme_out   : deep convection scheme
 !          shallow_scheme_out: shallow convection scheme
+!          yog_scheme_out    : yog convection scheme
 !          eddy_scheme_out   : vertical diffusion scheme
 !          microp_scheme_out : microphysics scheme
 !          radiation_scheme_out : radiation_scheme
@@ -296,9 +295,8 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
 !-----------------------------------------------------------------------
 
    character(len=16), intent(out), optional :: deep_scheme_out
-   character(len=136), intent(out), optional  :: nn_weights_out
-   character(len=136), intent(out), optional  :: SAM_sounding_out
    character(len=16), intent(out), optional :: shallow_scheme_out
+   character(len=16), intent(out), optional :: yog_scheme_out
    character(len=16), intent(out), optional :: eddy_scheme_out
    character(len=16), intent(out), optional :: microp_scheme_out
    character(len=16), intent(out), optional :: radiation_scheme_out
@@ -331,9 +329,8 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    logical,           intent(out), optional :: convproc_do_aer_out
 
    if ( present(deep_scheme_out         ) ) deep_scheme_out          = deep_scheme
-   if ( present(nn_weights_out          ) ) nn_weights_out           = nn_weights
-   if ( present(SAM_sounding_out        ) ) SAM_sounding_out         = SAM_sounding
    if ( present(shallow_scheme_out      ) ) shallow_scheme_out       = shallow_scheme
+   if ( present(yog_scheme_out          ) ) yog_scheme_out           = yog_scheme
    if ( present(eddy_scheme_out         ) ) eddy_scheme_out          = eddy_scheme
    if ( present(microp_scheme_out       ) ) microp_scheme_out        = microp_scheme
    if ( present(radiation_scheme_out    ) ) radiation_scheme_out     = radiation_scheme

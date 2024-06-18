@@ -1412,6 +1412,7 @@
 <deep_scheme phys='spcam_sam1mom'>SPCAM    </deep_scheme>
 <deep_scheme phys='spcam_m2005'  >SPCAM    </deep_scheme>
 
+<yog_scheme                      >off </yog_scheme>
 <nn_weights                      >NONE</nn_weights>
 <SAM_sounding                    >NONE</SAM_sounding>
 

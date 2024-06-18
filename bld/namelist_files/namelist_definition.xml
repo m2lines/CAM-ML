@@ -2961,16 +2961,6 @@ Type of deep convection scheme employed.  'ZM' for Zhang-McFarlane;
 Default: 'ZM' unless using 'UNICON', 'SPCAM' or 'pbl=none'
 </entry>
 
-<entry id="nn_weights" type="char*132" input_pathname="abs" category="conv"
-       group="phys_ctl_nl" valid_values="" >
-Path to the neural net weights used for the YOG deep convection scheme
-</entry>
-
-<entry id="SAM_sounding" type="char*132" input_pathname="abs" category="conv"
-       group="phys_ctl_nl" valid_values="" >
-Path to the SAM sounding profile used for the YOG deep convection scheme
-</entry>
-
 <entry id="microp_scheme" type="char*16" category="conv"
        group="phys_ctl_nl" valid_values="RK,MG,SPCAM_m2005,SPCAM_sam1mom" >
 Type of microphysics scheme employed.  'RK' for Rasch and Kristjansson
@@ -3004,6 +2994,13 @@ Type of shallow convection scheme employed.
  'SPCAM_m2005' for SPCAM double moment
  'SPCAM_sam1mom' for SPCAM single moment
 Default: set by build-namelist (depends on {{ hilight }}eddy_scheme{{ closehilight }}).
+</entry>
+
+<entry id="yog_scheme" type="char*16" category="conv"
+       group="phys_ctl_nl" valid_values="on,off" >
+Whether to run the Yuval-O'Gorman Scheme.
+'off' for no running; or 'on' to run.
+Default: 'off'.
 </entry>
 
 <entry id="do_beljaars" type="logical" category="pbl"
@@ -3277,6 +3274,17 @@ Default: false
 Apply adjustments to dry static energy so that CLUBB conserves
 energy.
 Default: true
+</entry>
+
+<!-- YOG parameters -->
+<entry id="nn_weights" type="char*132" input_pathname="abs" category="conv"
+       group="yog_params_nl" valid_values="" >
+Absolute path to the neural net weights used for the YOG deep convection scheme.
+</entry>
+
+<entry id="SAM_sounding" type="char*132" input_pathname="abs" category="conv"
+       group="yog_params_nl" valid_values="" >
+Absolute path to the SAM sounding profile used for the YOG deep convection scheme.
 </entry>
 
 <!-- CARMA Sectional Microphysics -->
