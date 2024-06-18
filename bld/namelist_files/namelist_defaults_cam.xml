@@ -1414,7 +1414,6 @@
 
 <nn_weights                      >NONE</nn_weights>
 <SAM_sounding                    >NONE</SAM_sounding>
-<run_deep_comp                   >off </run_deep_comp>
 
 <shallow_scheme pbl="none"         >NONE     </shallow_scheme>
 <shallow_scheme pbl="uw"           >UW       </shallow_scheme>
