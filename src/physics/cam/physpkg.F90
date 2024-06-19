@@ -1971,8 +1971,8 @@ contains
 
         call yog_tend(ztodt, state, ptend)
 
-        ! call physics_update(state, ptend, ztodt, tend)
-        ! call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+        call physics_update(state, ptend, ztodt, tend)
+        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
 
         call t_stopf('yog_nn')
     end if
