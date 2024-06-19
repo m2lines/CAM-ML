@@ -1938,8 +1938,9 @@ contains
          ztodt,   &
          state,   ptend, cam_in%landfrac, pbuf)
 
-    call physics_update(state, ptend, ztodt, tend)
-    ! NB: If we want to discard ZM tendencies here we need to call a ptend_dealloc
+    ! To disregard the ZM tendencies we don't call the physics update here.
+    ! ptend will be re-initialised in the physics_ptend_init() call of yog_tend()
+    ! call physics_update(state, ptend, ztodt, tend)
 
     call t_stopf('convect_deep_tend')
 
@@ -1971,8 +1972,8 @@ contains
 
         call yog_tend(ztodt, state, ptend)
 
-        ! call physics_update(state, ptend, ztodt, tend)
-        ! call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+        call physics_update(state, ptend, ztodt, tend)
+        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
 
         call t_stopf('yog_nn')
     end if
