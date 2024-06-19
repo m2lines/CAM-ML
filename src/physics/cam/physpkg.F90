@@ -52,7 +52,6 @@ module physpkg
   character(len=16) :: shallow_scheme
   character(len=16) :: macrop_scheme
   character(len=16) :: microp_scheme
-  character(len=16) :: deep_scheme    ! default set in phys_control.F90, use namelist to change
   character(len=16) :: yog_scheme     ! default set in phys_control.F90, use namelist to change
   integer           :: cld_macmic_num_steps    ! Number of macro/micro substeps
   logical           :: do_clubb_sgs
@@ -159,7 +158,6 @@ contains
 
     ! Get physics options
     call phys_getopts(shallow_scheme_out       = shallow_scheme, &
-                      deep_scheme_out          = deep_scheme, &
                       yog_scheme_out           = yog_scheme, &
                       macrop_scheme_out        = macrop_scheme,   &
                       microp_scheme_out        = microp_scheme,   &
