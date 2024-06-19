@@ -39,6 +39,7 @@ character(len=16) :: cam_physpkg          = unset_str  ! CAM physics package
 character(len=32) :: cam_chempkg          = unset_str  ! CAM chemistry package 
 character(len=16) :: waccmx_opt           = unset_str  ! WACCMX run option [ionosphere | neutral | off
 character(len=16) :: deep_scheme          = unset_str  ! deep convection package
+character(len=16) :: yog_scheme           = unset_str  ! YOG scheme package
 character(len=16) :: shallow_scheme       = unset_str  ! shallow convection package
 character(len=16) :: eddy_scheme          = unset_str  ! vertical diffusion package
 character(len=16) :: microp_scheme        = unset_str  ! microphysics package
@@ -118,7 +119,7 @@ subroutine phys_ctl_readnl(nlfile)
    character(len=*), parameter :: subname = 'phys_ctl_readnl'
 
    namelist /phys_ctl_nl/ cam_physpkg, use_simple_phys, cam_chempkg, waccmx_opt,  &
-      deep_scheme, shallow_scheme, &
+      deep_scheme, shallow_scheme, yog_scheme, &
       eddy_scheme, microp_scheme,  macrop_scheme, radiation_scheme, srf_flux_avg, &
       use_subcol_microp, atm_dep_flux, history_amwg, history_vdiag, history_aerosol, history_aero_optics, &
       history_eddy, history_budget,  history_budget_histfile_num, history_waccm, &
@@ -150,6 +151,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(cam_chempkg,                 len(cam_chempkg),      mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(waccmx_opt,                  len(waccmx_opt),       mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(shallow_scheme,              len(shallow_scheme),   mpi_character, masterprocid, mpicom, ierr)
+   call mpi_bcast(yog_scheme,                  len(yog_scheme),       mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(eddy_scheme,                 len(eddy_scheme),      mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(microp_scheme,               len(microp_scheme),    mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(radiation_scheme,            len(radiation_scheme), mpi_character, masterprocid, mpicom, ierr)
@@ -271,7 +273,7 @@ end function waccmx_is
 
 !===============================================================================
 
-subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, microp_scheme_out, &
+subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, yog_scheme_out, eddy_scheme_out, microp_scheme_out, &
                         radiation_scheme_out, use_subcol_microp_out, atm_dep_flux_out, &
                          history_amwg_out, history_vdiag_out, history_aerosol_out, history_aero_optics_out, history_eddy_out, &
                         history_budget_out, history_budget_histfile_num_out, &
@@ -285,6 +287,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
 ! Purpose: Return runtime settings
 !          deep_scheme_out   : deep convection scheme
 !          shallow_scheme_out: shallow convection scheme
+!          yog_scheme_out    : yog convection scheme
 !          eddy_scheme_out   : vertical diffusion scheme
 !          microp_scheme_out : microphysics scheme
 !          radiation_scheme_out : radiation_scheme
@@ -293,6 +296,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
 
    character(len=16), intent(out), optional :: deep_scheme_out
    character(len=16), intent(out), optional :: shallow_scheme_out
+   character(len=16), intent(out), optional :: yog_scheme_out
    character(len=16), intent(out), optional :: eddy_scheme_out
    character(len=16), intent(out), optional :: microp_scheme_out
    character(len=16), intent(out), optional :: radiation_scheme_out
@@ -326,6 +330,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
 
    if ( present(deep_scheme_out         ) ) deep_scheme_out          = deep_scheme
    if ( present(shallow_scheme_out      ) ) shallow_scheme_out       = shallow_scheme
+   if ( present(yog_scheme_out          ) ) yog_scheme_out           = yog_scheme
    if ( present(eddy_scheme_out         ) ) eddy_scheme_out          = eddy_scheme
    if ( present(microp_scheme_out       ) ) microp_scheme_out        = microp_scheme
    if ( present(radiation_scheme_out    ) ) radiation_scheme_out     = radiation_scheme

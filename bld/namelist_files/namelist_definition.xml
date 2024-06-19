@@ -2996,6 +2996,13 @@ Type of shallow convection scheme employed.
 Default: set by build-namelist (depends on {{ hilight }}eddy_scheme{{ closehilight }}).
 </entry>
 
+<entry id="yog_scheme" type="char*16" category="conv"
+       group="phys_ctl_nl" valid_values="on,off" >
+Whether to run the Yuval-O'Gorman Scheme.
+'off' for no running; or 'on' to run.
+Default: 'off'.
+</entry>
+
 <entry id="do_beljaars" type="logical" category="pbl"
        group="blj_nl" valid_values="" >
 Logical switch to turn on the beljaars scheme
@@ -3267,6 +3274,17 @@ Default: false
 Apply adjustments to dry static energy so that CLUBB conserves
 energy.
 Default: true
+</entry>
+
+<!-- YOG parameters -->
+<entry id="nn_weights" type="char*132" input_pathname="abs" category="conv"
+       group="yog_params_nl" valid_values="" >
+Absolute path to the neural net weights used for the YOG deep convection scheme.
+</entry>
+
+<entry id="SAM_sounding" type="char*132" input_pathname="abs" category="conv"
+       group="yog_params_nl" valid_values="" >
+Absolute path to the SAM sounding profile used for the YOG deep convection scheme.
 </entry>
 
 <!-- CARMA Sectional Microphysics -->
