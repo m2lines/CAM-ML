@@ -935,9 +935,7 @@ contains
     call qneg_init()
 
     ! Initialise YOG scheme
-    if (deep_scheme=='YOG') then
         call yog_init()
-    end if
 
   end subroutine phys_init
 
@@ -1223,9 +1221,7 @@ contains
     call chem_final
     call carma_final
     call wv_sat_final
-    if (deep_scheme=='YOG') then
        call yog_final()
-    end if
 
   end subroutine phys_final
 
@@ -1966,7 +1962,6 @@ contains
     snow_dp(:ncol) = snow_dp(:ncol) - rice(:ncol)
 
     ! Yuval O'Gorman scheme
-    if (deep_scheme=='YOG') then
         call t_startf('yog_nn')
 
         call yog_tend(ztodt, state, ptend)
@@ -1975,7 +1970,6 @@ contains
         ! call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
 
         call t_stopf('yog_nn')
-    end if
 
     !
     ! Call Hack (1994) convection scheme to deal with shallow/mid-level convection
