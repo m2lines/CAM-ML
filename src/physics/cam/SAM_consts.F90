@@ -1,6 +1,8 @@
 module SAM_consts_mod
   !! Physical constants from the SAM Model required for variable conversions
   
+  use netcdf
+
   implicit none
   public
 
@@ -114,8 +116,6 @@ contains
   subroutine check(err_status)
   !! Check error status after netcdf call and print message for
   !! error codes.
-
-  use netcdf
 
   integer, intent(in) :: err_status
     !! error status from nf90 function
