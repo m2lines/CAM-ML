@@ -3277,7 +3277,7 @@ Default: true
 </entry>
 
 <!-- YOG parameters -->
-<entry id="nn_weights" type="char*132" input_pathname="abs" category="conv"
+<entry id="yog_nn_weights" type="char*132" input_pathname="abs" category="conv"
        group="yog_params_nl" valid_values="" >
 Absolute path to the neural net weights used for the YOG deep convection scheme.
 </entry>

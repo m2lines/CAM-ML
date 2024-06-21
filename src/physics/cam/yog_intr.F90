@@ -30,7 +30,7 @@ module yog_intr
       yog_final,              &! finalize YOG scheme/module
       yog_tend                 ! return tendencies
 
-   character(len=136) :: nn_weights    ! location of weights for the YOG NN, set in namelist
+   character(len=136) :: yog_nn_weights    ! location of weights for the YOG NN, set in namelist
    character(len=136) :: SAM_sounding  ! location of SAM sounding profile for the YOG NN, set in namelist
    
 !=========================================================================================
@@ -64,7 +64,7 @@ subroutine yog_readnl(nlfile)
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'yog_readnl'
 
-   namelist /yog_params_nl/ nn_weights, SAM_sounding
+   namelist /yog_params_nl/ yog_nn_weights, SAM_sounding
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -83,8 +83,8 @@ subroutine yog_readnl(nlfile)
    end if
 
    ! Broadcast namelist variables
-   call mpi_bcast(nn_weights,   len(nn_weights),   mpi_character, masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun("yog_readnl: FATAL: mpi_bcast: nn_weights")
+   call mpi_bcast(yog_nn_weights,   len(yog_nn_weights),   mpi_character, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("yog_readnl: FATAL: mpi_bcast: yog_nn_weights")
    call mpi_bcast(SAM_sounding, len(SAM_sounding), mpi_character, masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun("yog_readnl: FATAL: mpi_bcast: SAM_sounding")
 
@@ -133,9 +133,9 @@ subroutine yog_init()
      call add_default('YOGPREC', history_budget_histfile_num, ' ')
   end if
 
-  call nn_convection_flux_CAM_init(nn_weights, SAM_sounding)
+  call nn_convection_flux_CAM_init(yog_nn_weights, SAM_sounding)
   if (masterproc) then
-     write(iulog,*)'nn_weights at: ', nn_weights
+     write(iulog,*)'yog_nn_weights at: ', yog_nn_weights
      write(iulog,*)'SAM_sounding at: ', SAM_sounding
      write(iulog,*)'YOG scheme initialised'
   endif
