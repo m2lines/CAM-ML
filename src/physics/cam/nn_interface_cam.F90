@@ -572,8 +572,8 @@ contains
             !! Absolute temperature from CAM
 
 
-        nx = size(q, 1)
-        nz = size(q, 2)
+        nx = size(r, 1)
+        nz = size(r, 2)
 
         do k = 1, nz
           do i = 1, nx
@@ -593,9 +593,9 @@ contains
     end subroutine CAM_var_conversion
     
 
-    subroutine SAM_var_conversion(t, q, tabs, qv, qc, qi)
-        !! Convert SAM t and q to tabs, qv, qc, qi used by CAM
-        !! t is normalised liquid ice static energy, q is total water
+    subroutine SAM_var_conversion(t, r, tabs, qv, qc, qi)
+        !! Convert SAM t and r to tabs, qv, qc, qi used by CAM
+        !! t is normalised liquid ice static energy, r is a dry mixing ratio
         !! tabs is absolute temperature, q is cloud vapor/liquid/ice,
 
         integer :: nx, nz
@@ -613,7 +613,7 @@ contains
             !! Temporary variable for tabs
 
         != unit kg/kg :: q, qn, qv, qc, qi
-        real(8) :: q(:, :)
+        real(8), intent(in) :: r(:, :)
             !! Total non-precipitating water mixing ratio from SAM
         real(8), intent(out) :: qv(:, :)
             !! Cloud water vapour in CAM
@@ -629,7 +629,7 @@ contains
             !! normalised liquid ice static energy
 
         ! Intermediate variables
-        real(8) :: qsat, om, omn, dtabs, dqsat, lstarn, dlstarn, fff, dfff
+        real(8) :: qsat, om, omn, dtabs, dqsat, lstarn, dlstarn, fff, dfff, rv, r_temp
 
         nx = size(tabs, 1)
         nz = size(tabs, 2)
@@ -637,8 +637,8 @@ contains
         do k = 1, nz
         do i = 1, nx
         
-            ! Enforce q >= 0.0
-            q(i,k)=max(0.,q(i,k))
+            ! Enforce r >= 0.0
+            r_temp=max(0.,r(i,k))
 
             ! Initial guess for temperature assuming no cloud water/ice:
             tabs(i,k) = t(i,k)-gamaz(k)
@@ -660,7 +660,7 @@ contains
             endif
 
             !  Test if condensation is possible and iterate:
-            if(q(i,k) .gt. qsat) then
+            if(r_temp .gt. qsat) then
                 niter=0
                 dtabs = 100.
                 do while(abs(dtabs).gt.0.01.and.niter.lt.10)
@@ -684,21 +684,21 @@ contains
                         dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
                     endif
 
-                    fff = tabs(i,k)-tabs1+lstarn*(q(i,k)-qsat)
-                    dfff=dlstarn*(q(i,k)-qsat)-lstarn*dqsat-1.
+                    fff = tabs(i,k)-tabs1+lstarn*(r_temp-qsat)
+                    dfff=dlstarn*(r_temp-qsat)-lstarn*dqsat-1.
                     dtabs=-fff/dfff
                     niter=niter+1
                     tabs1=tabs1+dtabs
                end do
 
                qsat = qsat + dqsat * dtabs
-               qn = max(0., q(i,k)-qsat)
-               qv(i,k) = max(0., q(i,k)-qn)
+               qn = max(0., r_temp-qsat)
+               rv = max(0., r_temp-qn)
 
             ! If condensation not possible qn is 0.0
             else
               qn = 0.
-              qv(i,k) = q(i,k)
+              rv = r_temp
 
             endif
 
@@ -708,9 +708,11 @@ contains
             !! Code for calculating qcc and qii from qn.
             !! Assumes dokruegermicro=.false. in SAM.
             !! Taken from statistics.f90
+            !! Also implements conversion from SAM dry mixing ratios to CAM moist mixing ratios
             omn = omegan(tabs(i,k))
-            qc(i,k) = qn*omn
-            qi(i,k) = qn*(1.-omn)
+            qc(i,k) = qn*omn/(1.+rv)
+            qi(i,k) = qn*(1.-omn)/(1.+rv)
+            qv(i,k) = rv/(1.+rv)
 
         end do
         end do
