@@ -747,6 +747,7 @@ contains
     use dadadj_cam,         only: dadadj_init
     use cam_abortutils,     only: endrun
     use nudging,            only: Nudge_Model, nudging_init
+    use yog_intr,           only: yog_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -932,6 +933,11 @@ contains
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
+
+    ! Initialise YOG scheme
+    if (yog_scheme=='on') then
+        call yog_init()
+    end if
 
   end subroutine phys_init
 
@@ -1196,6 +1202,7 @@ contains
     use chemistry, only : chem_final
     use carma_intr, only : carma_final
     use wv_saturation, only : wv_sat_final
+    use yog_intr,           only: yog_final
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -1216,6 +1223,9 @@ contains
     call chem_final
     call carma_final
     call wv_sat_final
+    if (yog_scheme=='on') then
+       call yog_final()
+    end if
 
   end subroutine phys_final
 
@@ -1702,6 +1712,7 @@ contains
     use subcol,          only: subcol_gen, subcol_ptend_avg
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
     use qneg_module,     only: qneg3
+    use yog_intr,        only: yog_tend
 
     ! Arguments
 
@@ -1803,6 +1814,8 @@ contains
     real(r8) :: zero_tracers(pcols,pcnst)
 
     logical   :: lq(pcnst)
+
+    real(r8) :: ftem(pcols,pver)              ! Temporary workspace for outfld variables
     !-----------------------------------------------------------------------
 
     call t_startf('bc_init')
@@ -1810,6 +1823,7 @@ contains
     zero = 0._r8
     zero_tracers(:,:) = 0._r8
     zero_sc(:) = 0._r8
+    ftem = 0._r8
 
     lchnk = state%lchnk
     ncol  = state%ncol
@@ -1925,6 +1939,7 @@ contains
          state,   ptend, cam_in%landfrac, pbuf)
 
     call physics_update(state, ptend, ztodt, tend)
+    ! NB: If we want to discard ZM tendencies here we need to call a ptend_dealloc
 
     call t_stopf('convect_deep_tend')
 
@@ -1949,6 +1964,18 @@ contains
     snow_dp(:ncol) = snow_dp(:ncol) + rice(:ncol)
     call check_energy_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
     snow_dp(:ncol) = snow_dp(:ncol) - rice(:ncol)
+
+    ! Yuval O'Gorman scheme
+    if (yog_scheme=='on') then
+        call t_startf('yog_nn')
+
+        call yog_tend(ztodt, state, ptend)
+
+        call physics_update(state, ptend, ztodt, tend)
+        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
+
+        call t_stopf('yog_nn')
+    end if
 
     !
     ! Call Hack (1994) convection scheme to deal with shallow/mid-level convection
