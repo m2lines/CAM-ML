@@ -108,8 +108,8 @@ contains
             !! precipitation at surface from one call to parameterisation
 
         ! Local input variables on the SAM grid
-        real(8), dimension(nx, nrf) :: q0_sam, tabs0_sam
-        real(8), dimension(nx, nrf) :: q_sam, t_sam, tabs_sam
+        real(8), dimension(nx, nrf) :: r0_sam, tabs0_sam
+        real(8), dimension(nx, nrf) :: r_sam, t_sam, tabs_sam
         real(8), dimension(nx, nrf) :: qi_sam, qv_sam, qc_sam
         real(8), dimension(nx, nrf) :: qi0_sam, qv0_sam, qc0_sam
         real(8), dimension(nx, nrf) :: dqi_sam, dqv_sam, dqc_sam, ds_sam
@@ -162,7 +162,7 @@ contains
         !-----------------------------------------------------
         
         ! Convert CAM Moistures and tabs to SAM q and t
-        call  CAM_var_conversion(qv_sam, qc_sam, qi_sam, q_sam, tabs_sam, t_sam)
+        call  CAM_var_conversion(qv_sam, qc_sam, qi_sam, r_sam, tabs_sam, t_sam)
 
         ! Store variables on SAM grid at the start of the timestep
         ! for calculating tendencies later
@@ -174,15 +174,15 @@ contains
         !-----------------------------------------------------
 
         tabs0_sam = tabs_sam
-        q0_sam = q_sam
+        r0_sam = r_sam
         ! Run the neural net parameterisation
         ! Updates q and t with delta values
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
         ! sedimentation (dt = -dq*(latent_heat/cp)),
         ! radiation rest tendency (multiply by dtn to get dt)
-        call nn_convection_flux(tabs0_sam(:,1:nrf), q0_sam(:,1:nrf), y_in, &
+        call nn_convection_flux(tabs0_sam(:,1:nrf), r0_sam(:,1:nrf), y_in, &
                                 tabs_sam(:,1:nrf), &
-                                t_sam(:,1:nrf), q_sam(:,1:nrf), &
+                                t_sam(:,1:nrf), r_sam(:,1:nrf), &
                                 rho, adz, dz, dtn, &
                                 precsfc_i)
         ! Update precsfc with prec from this timestep
@@ -191,7 +191,7 @@ contains
         !-----------------------------------------------------
         
         ! Formulate the output variables to CAM as required.
-        call SAM_var_conversion(t_sam, q_sam, tabs_sam, qv_sam, qc_sam, qi_sam)
+        call SAM_var_conversion(t_sam, r_sam, tabs_sam, qv_sam, qc_sam, qi_sam)
         ! Convert precipitation from kg/m^2 to m by dividing by density (1000)
         precsfc = precsfc * 1.0D-3
 
@@ -532,8 +532,9 @@ contains
     end subroutine sam_sounding_finalize
 
 
-    subroutine CAM_var_conversion(qv, qc, qi, q, tabs, t)
-        !! Convert CAM qv, qc, qi to q to used by SAM parameterisation
+    subroutine CAM_var_conversion(qv, qc, qi, r, tabs, t)
+        !! Convert CAM moist mixing ratios for species qv, qc, qi to 
+        !! dry mixing ratio r to used by SAM parameterisation
         !! q is total water qv/c/i is cloud vapor/liquid/ice
         !! Convert CAM absolute temperature to moist static energy t used by SAM
         !! by inverting lines 49-53 of diagnose.f90 from SAM where
@@ -549,12 +550,14 @@ contains
             !! Counters
         real(8) :: omn
             !! intermediate omn factor used in variable conversion
+        real(8) :: rv
+            !! intermediate rv to hold dry mixing ratio
 
         ! ---------------------
         ! Fields from CAM/SAM
         ! ---------------------
-        != unit 1 :: q, qv, qc, qi
-        real(8), intent(out) :: q(:, :)
+        != unit 1 :: r
+        real(8), intent(out) :: r(:, :)
             !! Total non-precipitating water mixing ratio as required by SAM NN
         real(8), intent(in) :: qv(:, :)
             !! Cloud water vapour from CAM
@@ -574,13 +577,15 @@ contains
 
         do k = 1, nz
           do i = 1, nx
-            q(i,k) = qv(i,k) + qc(i,k) + qi(i,k)
+            ! Calculate dry mixing ratio as required by SAM from moist variables as provided by CAM
+            rv = qv(i,k) / (1. - qv(i,k))
+            r(i,k) = rv + qc(i,k)*(1.+rv) + qi(i,k)*(1.+rv)
 
             ! omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
             omn  = max(0.,min(1.,(tabs(i,k)-tbgmin)*a_bg))
             t(i,k) = tabs(i,k) &
                    ! - (fac_cond+(1.-omp)*fac_fus)*qp(i,k) &  ! There is no qp in CAM
-                     - (fac_cond+(1.-omn)*fac_fus)*(qc(i,k) + qi(i,k)) &
+                     - (fac_cond+(1.-omn)*fac_fus)*(qc(i,k)*(1.+rv) + qi(i,k)*(1.+rv)) &
                      + gamaz(k)
           end do
         end do
