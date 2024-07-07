@@ -166,17 +166,21 @@ contains
         ! Convert CAM Moistures and tabs to SAM q and t
         call  CAM_var_conversion(qv_sam, qc_sam, qi_sam, r_sam, tabs_sam, t_sam)
 
+        !-----------------------------------------------------
+
         ! Store variables on SAM grid at the start of the timestep
         ! for calculating tendencies later
-        qv0_sam = qv_sam
-        qc0_sam = qc_sam
-        qi0_sam = qi_sam
-        tabs0_sam = tabs_sam
+        ! These are calculated following a conversion of the "new" SAM variables back
+        ! CAM-space to reduce numerical errors (e.g. tendency is zero).
+        call SAM_var_conversion(t_sam, r_sam, tabs0_sam, qv0_sam, qc0_sam, qi0_sam)
+
+        ! TODO Decide whether the 'reconverted' tabs or the interpolated from CAM tabs
+        ! is best here. Consider also plotting to check.
+        ! tabs0_sam = tabs_sam
+        r0_sam = r_sam
 
         !-----------------------------------------------------
 
-        tabs0_sam = tabs_sam
-        r0_sam = r_sam
         ! Run the neural net parameterisation
         ! Updates q and t with delta values
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
@@ -610,7 +614,7 @@ contains
         ! Fields from SAM/CAM
         ! ---------------------
         != unit K :: tabs, tabs1
-        real(8), intent(inout) :: tabs(:, :)
+        real(8), intent(out) :: tabs(:, :)
             !! absolute temperature
         real(8) :: tabs1
             !! Temporary variable for tabs
