@@ -86,34 +86,41 @@ contains
 
         real(8), intent(in) :: cp_cam
             !! specific heat capacity of dry air from CAM [J/kg/K]
-        real(8), dimension(:,:) :: pres_cam
+        real(8), dimension(:,:), intent(in) :: pres_cam
             !! pressure [Pa] from the CAM model
-        real(8), dimension(:,:) :: pres_int_cam
+        real(8), dimension(:,:), intent(in) :: pres_int_cam
             !! interface pressure [Pa] from the CAM model
-        real(8), dimension(:) :: pres_sfc_cam
+        real(8), dimension(:), intent(in)   :: pres_sfc_cam
             !! surface pressure [Pa] from the CAM model
-        real(8), dimension(:,:) :: tabs_cam
+        real(8), dimension(:,:), intent(in) :: tabs_cam
             !! absolute temperature [K] from the CAM model
-        real(8), dimension(:,:) :: qv_cam, qc_cam, qi_cam
+        real(8), dimension(:,:), intent(in) :: qv_cam, qc_cam, qi_cam
             !! moisture content [kg/kg] from the CAM model
-        real(8), dimension(:) :: precsfc
 
-        ! Outputs on the CAM grid
         real(8), dimension(nx, nz), intent(out) :: dqi, dqv, dqc, ds
-
-        real(8) :: y_in(nx)
-            !! Distance of column from equator (proxy for insolation and sfc albedo)
-
-        real(8), dimension(nx)      :: precsfc_i
-            !! precipitation at surface from one call to parameterisation
+            !! Output tendencies - CAM variables on the CAM grid
+        real(8), dimension(:), intent(out) :: precsfc
+            !! Output surface precipitation in CAM
 
         ! Local input variables on the SAM grid
-        real(8), dimension(nx, nrf) :: r0_sam, tabs0_sam
-        real(8), dimension(nx, nrf) :: r_sam, t_sam, tabs_sam
+        real(8), dimension(nx, nrf) :: tabs_sam
+            !! absolute temperature [K] on the SAM grid
+        real(8), dimension(nx, nrf) :: r_sam
+            !! non-precipitating water mixing ratio [kg/kg] on the SAM grid
+        real(8), dimension(nx, nrf) :: t_sam
+            !! static energy [J/kg] on the SAM grid
         real(8), dimension(nx, nrf) :: qi_sam, qv_sam, qc_sam
-        real(8), dimension(nx, nrf) :: qi0_sam, qv0_sam, qc0_sam
+            !! mixing ratios [kg/kg] on the SAM grid
+        real(8), dimension(nx, nrf) :: qi0_sam, qv0_sam, qc0_sam, tabs0_sam, r0_sam
+            !! Variables at the start of the parameterisation on the SAM grid - used to calculate tendencies
         real(8), dimension(nx, nrf) :: dqi_sam, dqv_sam, dqc_sam, ds_sam
-        real(8), dimension(nx) :: qi_surf, qv_surf, qc_surf, tabs_surf
+            !! CAM variable tendencies calculated on the SAM grid
+        real(8), dimension(nx)      :: qi_surf, qv_surf, qc_surf, tabs_surf
+            !! Surface values
+        real(8) :: y_in(nx)
+            !! Distance of column from equator (proxy for insolation and sfc albedo)
+        real(8), dimension(nx)      :: precsfc_i
+            !! precipitation at surface from one call to parameterisation
 
         integer :: k
 
@@ -242,7 +249,7 @@ contains
         !! coarser than the target (SAM) grid.
 
         !! NOTE: When reading this code remember that pressure DECREASES monotonically
-        !!       with altitude, so comparisons are not intuitive: Pa > Pb => a is below b
+        !!       with altitude, so comparisons are not intuitive: Pa > Pb => a is lower altitude than b
 
         != unit hPa :: p_cam, p_surf_cam
         real(8), dimension(:,:), intent(in) :: p_cam
