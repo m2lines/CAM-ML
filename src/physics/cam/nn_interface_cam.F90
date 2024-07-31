@@ -634,6 +634,8 @@ contains
         nx = size(tabs, 1)
         nz = size(tabs, 2)
 
+        ! Loop over all cells and iterate until equilibrium of condensed species is achieved.
+        ! This code is adapted from cloud.f90 in SAM
         do k = 1, nz
         do i = 1, nx
         
@@ -644,38 +646,39 @@ contains
             tabs(i,k) = t(i,k)-gamaz(k)
             tabs1=tabs(i,k)
 
+            ! Set saturation vapour based on cloud type
             ! Warm cloud:
             if(tabs1.ge.tbgmax) then
                 qsat = qsatw(tabs1,pres(k))
-
             ! Ice cloud:
             elseif(tabs1.le.tbgmin) then
                 qsat = qsati(tabs1,pres(k))
-
             ! Mixed-phase cloud:
             else
                 om = an*tabs1-bn
                 qsat = om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
-
             endif
 
-            !  Test if condensation is possible and iterate:
+            !  Test if condensation is possible (humidity is above saturation) and iterate:
             if(r_temp .gt. qsat) then
                 niter=0
                 dtabs = 100.
                 do while(abs(dtabs).gt.0.01.and.niter.lt.10)
+                    ! Warm cloud regime
                     if(tabs1.ge.tbgmax) then
                         om=1.
                         lstarn=fac_cond
                         dlstarn=0.
                         qsat=qsatw(tabs1,pres(k))
                         dqsat=dtqsatw(tabs1,pres(k))
-                           else if(tabs1.le.tbgmin) then
+                    ! Ice cloud regime
+                    else if(tabs1.le.tbgmin) then
                         om=0.
                         lstarn=fac_sub
                         dlstarn=0.
                         qsat=qsati(tabs1,pres(k))
                         dqsat=dtqsati(tabs1,pres(k))
+                    ! Mixed cloud regime
                     else
                         om=an*tabs1-bn
                         lstarn=fac_cond+(1.-om)*fac_fus
@@ -684,6 +687,7 @@ contains
                         dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
                     endif
 
+                    ! Update thermodynamics and check for convergence
                     fff = tabs(i,k)-tabs1+lstarn*(r_temp-qsat)
                     dfff=dlstarn*(r_temp-qsat)-lstarn*dqsat-1.
                     dtabs=-fff/dfff
@@ -691,6 +695,7 @@ contains
                     tabs1=tabs1+dtabs
                end do
 
+               ! Update saturation point and then calculate water and residual vapour content
                qsat = qsat + dqsat * dtabs
                qn = max(0., r_temp-qsat)
                rv = max(0., r_temp-qn)
@@ -705,10 +710,9 @@ contains
             ! Set tabs to iterated tabs after convection
             tabs(i,k) = tabs1
 
-            !! Code for calculating qcc and qii from qn.
-            !! Assumes dokruegermicro=.false. in SAM.
-            !! Taken from statistics.f90
-            !! Also implements conversion from SAM dry mixing ratios to CAM moist mixing ratios
+            ! Code for calculating qc and qi from qn.
+            ! Taken from statistics.f90 in SAM assuming dokruegermicro=.false.
+            ! Also implements conversion from SAM dry mixing ratios to CAM moist mixing ratios
             omn = omegan(tabs(i,k))
             qc(i,k) = qn*omn/(1.+rv)
             qi(i,k) = qn*(1.-omn)/(1.+rv)
