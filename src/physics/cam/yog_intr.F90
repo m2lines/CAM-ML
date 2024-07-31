@@ -183,9 +183,10 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
 
    ! Local variables
 
-   integer :: i
+   integer :: i, k
    integer :: nstep
    integer :: ixcldice, ixcldliq      ! constituent indices for cloud liquid and ice water.
+   integer :: ixnumice, ixnumliq      ! constituent indices for cloud liquid and ice number concentration.
    integer :: lchnk                   ! chunk identifier
    integer :: ncol                    ! number of atmospheric columns
 
@@ -232,6 +233,17 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
    ! Add prec_yog to prec_dp for passing to physpkg and coupler
    ! Note that prec_dp is initialised in the physics buffer and zeroed for deep_scheme='off'
    prec(:ncol) = prec(:ncol) + yog_precsfc(:ncol)
+
+  ! Update the number concentration tendencies for liquid and ice species
+  ! Values taken to match those in the `clubb_tend_cam()` subroutine
+  call cnst_get_ind('NUMLIQ', ixnumliq)
+  call cnst_get_ind('NUMICE', ixnumice)
+  do k = 1, pver
+  do i = 1, ncol
+    ptend%q(i,k,ixnumliq) = 3. * max(0.0, ptend%q(i,k,ixcldliq)) / (4.0*3.14* 8.0e-6**3*997.0)
+    ptend%q(i,k,ixnumice) = 3. * max(0.0, ptend%q(i,k,ixcldice)) / (4.0*3.14*25.0e-6**3*500.0)
+  end do
+  end do
 
 end subroutine yog_tend
 
