@@ -357,7 +357,7 @@ contains
             ! Calculate surface precipitation
             ! Combination of sedimentation at surface, and autoconversion in the column
             ! Apply sedimenting flux at surface to get rho*dq term
-            precsfc(i) = precsfc(i) - min(q_sed_flux(1), 0D0) * irhoadzdz(1) * rho(1) * adz(1) !!  *dtn/dz
+            precsfc(i) = precsfc(i) - q_sed_flux(1) * irhoadzdz(1) * rho(1) * adz(1) !!  *dtn/dz
             ! Loop up column for all autoconverted precipitation
             do k=1,nrf
                 precsfc(i) = precsfc(i) - q_delta_auto(i,k) * rho(k) * adz(k)
