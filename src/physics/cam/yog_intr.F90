@@ -113,11 +113,13 @@ subroutine yog_init()
   integer :: history_budget_histfile_num ! output history file number for budget fields
 
   ! Register fields with the output buffer
-  call addfld ('YOGDT  ',   (/ 'lev' /),  'A', 'K/s','T tendency - Yuval-OGorman moist convection')
-  call addfld ('YOGDQ  ',   (/ 'lev' /),  'A', 'kg/kg/s','Q tendency - Yuval-OGorman moist convection')
-  call addfld ('YOGDICE',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud ice tendency - Yuval-OGorman convection')
-  call addfld ('YOGDLIQ',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud liq tendency - Yuval-OGorman convection')
-  call addfld ('YOGPREC',   horiz_only ,  'A', 'm/s','Surface preciptation - Yuval-OGorman convection')
+  call addfld ('YOGDT  ',    (/ 'lev' /),  'A', 'K/s','T tendency - Yuval-OGorman moist convection')
+  call addfld ('YOGDQ  ',    (/ 'lev' /),  'A', 'kg/kg/s','Q tendency - Yuval-OGorman moist convection')
+  call addfld ('YOGDICE',    (/ 'lev' /),  'A', 'kg/kg/s','Cloud ice tendency - Yuval-OGorman convection')
+  call addfld ('YOGDLIQ',    (/ 'lev' /),  'A', 'kg/kg/s','Cloud liq tendency - Yuval-OGorman convection')
+  call addfld ('YOGPREC',    horiz_only ,  'A', 'm/s','Surface preciptation - Yuval-OGorman convection')
+  call addfld ('YOGDNUMLIQ', (/ 'lev' /),  'A', 'N/s','Cloud liq number conc. tendency - Yuval-OGorman convection')
+  call addfld ('YOGDNUMICE', (/ 'lev' /),  'A', 'N/s','Cloud ice number conc. tendency - Yuval-OGorman convection')
   if (masterproc) then
      write(iulog,*)'YOG output fields added to buffer'
   end if
@@ -131,6 +133,8 @@ subroutine yog_init()
      call add_default('YOGDICE', history_budget_histfile_num, ' ')
      call add_default('YOGDLIQ', history_budget_histfile_num, ' ')
      call add_default('YOGPREC', history_budget_histfile_num, ' ')
+     call add_default('YOGDNUMLIQ', history_budget_histfile_num, ' ')
+     call add_default('YOGDNUMICE', history_budget_histfile_num, ' ')
   end if
 
   call nn_convection_flux_CAM_init(yog_nn_weights, SAM_sounding)
@@ -209,7 +213,7 @@ subroutine yog_tend(ztodt, state, ptend)
 
    lq(:) = .true.
    call physics_ptend_init(ptend, state%psetcols, 'yogNN', ls=.true., lq=lq(:))! initialize ptend type for YOG
- 
+
    call nn_convection_flux_CAM(state%pmid(:,pver:1:-1), state%pint(:,pverp:1:-1), state%ps, &
                                state%t(:,pver:1:-1), state%q(:,pver:1:-1,1), &
                                state%q(:,pver:1:-1,ixcldliq), state%q(:,pver:1:-1,ixcldice), &
@@ -227,16 +231,18 @@ subroutine yog_tend(ztodt, state, ptend)
    call outfld('YOGDLIQ ',ptend%q(1,1,ixcldliq) ,pcols   ,lchnk   )
    call outfld('YOGPREC ',yog_precsfc ,pcols   ,lchnk   )
 
-  ! Update the number concentration tendencies for liquid and ice species
-  ! Values taken to match those in the `clubb_tend_cam()` subroutine
-  call cnst_get_ind('NUMLIQ', ixnumliq)
-  call cnst_get_ind('NUMICE', ixnumice)
-  do k = 1, pver
-  do i = 1, ncol
-    ptend%q(i,k,ixnumliq) = 3. * max(0.0, ptend%q(i,k,ixcldliq)) / (4.0*3.14* 8.0e-6**3*997.0)
-    ptend%q(i,k,ixnumice) = 3. * max(0.0, ptend%q(i,k,ixcldice)) / (4.0*3.14*25.0e-6**3*500.0)
-  end do
-  end do
+   ! Update the number concentration tendencies for liquid and ice species
+   ! Values taken to match those in the `clubb_tend_cam()` subroutine
+   call cnst_get_ind('NUMLIQ', ixnumliq)
+   call cnst_get_ind('NUMICE', ixnumice)
+   do k = 1, pver
+   do i = 1, ncol
+      ptend%q(i,k,ixnumliq) = 3. * max(0.0, ptend%q(i,k,ixcldliq)) / (4.0*3.14* 8.0e-6**3*997.0)
+      ptend%q(i,k,ixnumice) = 3. * max(0.0, ptend%q(i,k,ixcldice)) / (4.0*3.14*25.0e-6**3*500.0)
+   end do
+   end do
+   call outfld('YOGDNUMLIQ ',ptend%q(1,1,ixnumliq) ,pcols   ,lchnk   )
+   call outfld('YOGDNUMICE ',ptend%q(1,1,ixnumice) ,pcols   ,lchnk   )
 
 end subroutine yog_tend
 
