@@ -215,7 +215,6 @@ subroutine yog_tend(ztodt, state, ptend)
                                cpair, &
                                ztodt, &
                                ncol, pver, &
-                               1, 1, 1, &
                                yog_precsfc, &
                                ptend%q(:,pver:1:-1,ixcldice), ptend%q(:,pver:1:-1,1), &
                                ptend%q(:,pver:1:-1,ixcldliq), ptend%s(:,pver:1:-1))
