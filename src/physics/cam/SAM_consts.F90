@@ -92,7 +92,7 @@ module SAM_consts_mod
   integer, parameter :: nrfq = nrf - 1
       !! number of vertical levels the NN uses when boundary condition is set to 0
 
-  real(8), parameter :: dt_sam = 30.0
+  real(8), parameter :: dt_sam = 24.0
       !! SAM timestep in seconds
 
 !---------------------------------------------------------------------
