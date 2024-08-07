@@ -194,6 +194,7 @@ subroutine yog_tend(ztodt, state, ptend)
    integer :: ncol                    ! number of atmospheric columns
 
    real(r8) :: ftem(pcols,pver)       ! Temporary workspace for outfld variables
+   real(r8) :: num_tem                ! Temporary holder for number tendency
 
    logical  :: lq(pcnst)
 
@@ -234,12 +235,26 @@ subroutine yog_tend(ztodt, state, ptend)
 
    ! Update the number concentration tendencies for liquid and ice species
    ! Values taken to match those in the `clubb_tend_cam()` subroutine
+   ! YOG can produce negative number tendency, but we must ensure it doesn't reduce total
+   ! number concentration below 0.0
    call cnst_get_ind('NUMLIQ', ixnumliq)
    call cnst_get_ind('NUMICE', ixnumice)
    do k = 1, pver
    do i = 1, ncol
-      ptend%q(i,k,ixnumliq) = 3. * max(0.0, ptend%q(i,k,ixcldliq)) / (4.0*3.14* 8.0e-6**3*997.0)
-      ptend%q(i,k,ixnumice) = 3. * max(0.0, ptend%q(i,k,ixcldice)) / (4.0*3.14*25.0e-6**3*500.0)
+      ! Liquid
+      num_tem = 3. * ptend%q(i,k,ixcldliq) / (4.0*3.14* 8.0e-6**3*997.0)
+      if (num_tem .lt. 0) then
+         ptend%q(i,k,ixnumliq) = - min(-num_tem, state%q(i,k,ixnumliq)/ztodt)
+      else
+         ptend%q(i,k,ixnumliq) = num_tem
+      endif
+      ! Ice
+      num_tem = 3. * ptend%q(i,k,ixcldice) / (4.0*3.14*25.0e-6**3*500.0)
+      if (num_tem .lt. 0) then
+         ptend%q(i,k,ixnumice) = - min(-num_tem, state%q(i,k,ixnumice)/ztodt)
+      else
+         ptend%q(i,k,ixnumice) = num_tem
+      endif
    end do
    end do
    call outfld('YOGDNUMLIQ ',ptend%q(1,1,ixnumliq) ,pcols   ,lchnk   )
