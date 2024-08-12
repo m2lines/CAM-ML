@@ -25,7 +25,7 @@ public  nn_convection_flux_CAM, &
 
 ! Make these routines public for purposes of testing,
 ! otherwise not required outside this module.
-public interp_to_sam, interp_to_cam, fetch_sam_data
+public interp_to_sam, interp_to_cam
 public SAM_var_conversion, CAM_var_conversion
 
 !---------------------------------------------------------------------
@@ -36,11 +36,11 @@ integer :: nz_sam
     !! number of vertical values in the SAM sounding profiles
 
 != unit m :: z
-!= unit hPa :: pres, presi, pres_mid
+!= unit hPa :: pres, presi
 != unit kg m-3 :: rho
 != unit 1 :: adz
 != unit K :: gamaz
-real(8), allocatable, dimension(:) :: z, pres, presi, pres_mid, rho, adz, gamaz
+real(8), allocatable, dimension(:) :: z, pres, presi, rho, adz, gamaz
     !! SAM sounding variables
 
 != unit m :: dz
@@ -51,18 +51,6 @@ real(8) :: dz
 ! Functions and Subroutines
 
 contains
-
-    subroutine fetch_sam_data(pressam, presisam, gamazsam, rhosam, zsam)
-        !! Temporary subroutine to extract SAM pressure profile
-        real(8), dimension(48), intent(out) :: pressam, presisam, gamazsam, rhosam, zsam
-        pressam(:) = pres_mid(:)
-        presisam(:) = presi(:)
-        gamazsam(:) = gamaz(:)
-        rhosam(:) = rho(:)
-        zsam(:) = z(:)
-
-    end subroutine fetch_sam_data
-
 
     !-----------------------------------------------------------------
     ! Public Subroutines
@@ -283,9 +271,9 @@ contains
         allocate(p_norm_cam(ncol_cam, nz_cam))
 
         ! Normalise pressures by surface value
-        ! Note - We work in pressure space but use a 'midpoint' based on altitude from
+        ! Note - We work in pressure space but use a pressure 'midpoint' based on altitude from
         !        SAM as this is concurrent to the variable value at this location.
-        p_norm_sam(:) = pres_mid(:) / presi(1)
+        p_norm_sam(:) = pres(:) / presi(1)
         do k = 1,nz_cam
             p_norm_cam(:,k) = p_cam(:,k) / p_surf_cam(:)
         end do
@@ -375,7 +363,7 @@ contains
         allocate(p_int_norm_cam(ncol_cam, nz_cam+1))
 
         ! Normalise pressures by surface value (extending SAM to add top interface)
-        p_norm_sam(:) = pres_mid(1:nrf) / presi(1)
+        p_norm_sam(:) = pres(1:nrf) / presi(1)
         p_int_norm_sam(1:nrf+1) = presi(1:nrf+1) / presi(1)
         p_int_norm_sam(1) = 1.0
 
@@ -503,7 +491,6 @@ contains
         allocate(z(nz_sam))
         allocate(pres(nz_sam))
         allocate(presi(nz_sam))
-        allocate(pres_mid(nz_sam))
         allocate(rho(nz_sam))
         allocate(adz(nz_sam))
         allocate(gamaz(nz_sam))
@@ -532,12 +519,6 @@ contains
             gamaz(k) = ggr/cp*z(k)
         end do
 
-        ! Calculate the pressure centre of the cell (as opposed to the altitude centre)
-        do k = 1, nz_sam-1
-            pres_mid(k) = (presi(k) + presi(k+1)) / 2.0
-        end do
-        pres_mid(nz_sam) = -9999.0
-
         write(*,*) 'Finished reading SAM sounding file.'
 
     end subroutine sam_sounding_init
@@ -546,7 +527,7 @@ contains
     subroutine sam_sounding_finalize()
         !! Deallocate module variables read from sounding
 
-        deallocate(z, pres, presi, pres_mid, rho, adz, gamaz)
+        deallocate(z, pres, presi, rho, adz, gamaz)
 
     end subroutine sam_sounding_finalize
 
@@ -660,16 +641,16 @@ contains
 
             ! Warm cloud:
             if(tabs1.ge.tbgmax) then
-                qsat = qsatw(tabs1,pres_mid(k))
+                qsat = qsatw(tabs1,pres(k))
 
             ! Ice cloud:
             elseif(tabs1.le.tbgmin) then
-                qsat = qsati(tabs1,pres_mid(k))
+                qsat = qsati(tabs1,pres(k))
 
             ! Mixed-phase cloud:
             else
                 om = an*tabs1-bn
-                qsat = om*qsatw(tabs1,pres_mid(k))+(1.-om)*qsati(tabs1,pres_mid(k))
+                qsat = om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
 
             endif
 
@@ -682,20 +663,20 @@ contains
                         om=1.
                         lstarn=fac_cond
                         dlstarn=0.
-                        qsat=qsatw(tabs1,pres_mid(k))
-                        dqsat=dtqsatw(tabs1,pres_mid(k))
+                        qsat=qsatw(tabs1,pres(k))
+                        dqsat=dtqsatw(tabs1,pres(k))
                            else if(tabs1.le.tbgmin) then
                         om=0.
                         lstarn=fac_sub
                         dlstarn=0.
-                        qsat=qsati(tabs1,pres_mid(k))
-                        dqsat=dtqsati(tabs1,pres_mid(k))
+                        qsat=qsati(tabs1,pres(k))
+                        dqsat=dtqsati(tabs1,pres(k))
                     else
                         om=an*tabs1-bn
                         lstarn=fac_cond+(1.-om)*fac_fus
                         dlstarn=an
-                        qsat=om*qsatw(tabs1,pres_mid(k))+(1.-om)*qsati(tabs1,pres_mid(k))
-                        dqsat=om*dtqsatw(tabs1,pres_mid(k))+(1.-om)*dtqsati(tabs1,pres_mid(k))
+                        qsat=om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
+                        dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
                     endif
 
                     fff = tabs(i,k)-tabs1+lstarn*(q(i,k)-qsat)
