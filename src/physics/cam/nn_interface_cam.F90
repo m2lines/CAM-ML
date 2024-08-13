@@ -127,11 +127,6 @@ contains
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         precsfc(:)=0.
 
-        ! distance to the equator
-        ! y is a proxy for insolation and surface albedo as both are only a function of |y| in SAM
-        ! TODO: Set y_in as appropriate for CAM
-        y_in(:) = 0.0
-
         !-----------------------------------------------------
         
         ! Interpolate CAM variables to the SAM pressure levels
@@ -187,7 +182,7 @@ contains
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
         ! sedimentation (dt = -dq*(latent_heat/cp)),
         ! radiation rest tendency (multiply by dtn to get dt)
-        call nn_convection_flux(tabs0_sam(:,1:nrf), r0_sam(:,1:nrf), y_in, &
+        call nn_convection_flux(tabs0_sam(:,1:nrf), r0_sam(:,1:nrf), &
                                 tabs_sam(:,1:nrf), &
                                 t_sam(:,1:nrf), r_sam(:,1:nrf), &
                                 rho, adz, dz, dtn, &
