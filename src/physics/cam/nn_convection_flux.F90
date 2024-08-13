@@ -55,7 +55,7 @@ contains
     end subroutine nn_convection_flux_init
 
 
-    subroutine nn_convection_flux(tabs_i, q_i, y_in, &
+    subroutine nn_convection_flux(tabs_i, q_i, &
                                   tabs, &
                                   t, q, &
                                   rho, adz, dz, dtn, &
@@ -82,10 +82,6 @@ contains
         ! ---------------------
         ! Other fields from SAM
         ! ---------------------
-        != unit m :: y_in
-        real(8), intent(in) :: y_in(:)
-            !! Distance of column from equator (proxy for insolation and sfc albedo)
-
         != unit K :: tabs
         real(8), intent(in) :: tabs(:, :)
             !! absolute temperature
@@ -225,11 +221,6 @@ contains
                 features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,1:input_ver_dim),4)
                 dim_counter =  dim_counter + input_ver_dim
             ! endif
-
-            ! Add distance to the equator as input feature
-            ! y is a proxy for insolation and surface albedo as both are only a function of |y| in SAM
-            features(dim_counter+1) = y_in(i)
-            dim_counter = dim_counter+1
 
             !-----------------------------------------------------
             ! Call the forward method of the NN on the input features
