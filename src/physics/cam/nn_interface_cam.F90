@@ -117,8 +117,6 @@ contains
             !! CAM variable tendencies calculated on the SAM grid
         real(8), dimension(nx)      :: qi_surf, qv_surf, qc_surf, tabs_surf
             !! Surface values
-        real(8) :: y_in(nx)
-            !! Distance of column from equator (proxy for insolation and sfc albedo)
         real(8), dimension(nx)      :: precsfc_i
             !! precipitation at surface from one call to parameterisation
 
@@ -126,11 +124,6 @@ contains
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         precsfc(:)=0.
-
-        ! distance to the equator
-        ! y is a proxy for insolation and surface albedo as both are only a function of |y| in SAM
-        ! TODO: Set y_in as appropriate for CAM
-        y_in(:) = 0.0
 
         !-----------------------------------------------------
         
@@ -187,7 +180,7 @@ contains
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
         ! sedimentation (dt = -dq*(latent_heat/cp)),
         ! radiation rest tendency (multiply by dtn to get dt)
-        call nn_convection_flux(tabs0_sam(:,1:nrf), r0_sam(:,1:nrf), y_in, &
+        call nn_convection_flux(tabs0_sam(:,1:nrf), q0_sam(:,1:nrf), &
                                 tabs_sam(:,1:nrf), &
                                 t_sam(:,1:nrf), r_sam(:,1:nrf), &
                                 rho, adz, dz, dtn, &
