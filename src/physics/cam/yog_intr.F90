@@ -239,10 +239,10 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
    ! Note that prec_dp is initialised in the physics buffer and zeroed for deep_scheme='off'
    prec(:ncol) = prec(:ncol) + yog_precsfc(:ncol)
 
-   ! Update the number concentration tendencies for liquid and ice species
-   ! Values taken to match those in the `clubb_tend_cam()` subroutine
-   ! YOG can produce negative number tendency, but we must ensure it doesn't reduce total
-   ! number concentration below 0.0
+   ! Update the number concentration tendencies for liquid and ice species for all cells
+   ! Match calculations in the `clubb_tend_cam()` subroutine
+   ! YOG could produce negative number tendency, so we ensure it doesn't reduce total
+   ! number concentration below 0.0 - note that a check on this is also made in physics_update()
    call cnst_get_ind('NUMLIQ', ixnumliq)
    call cnst_get_ind('NUMICE', ixnumice)
    do k = 1, pver
