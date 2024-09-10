@@ -8,7 +8,7 @@ module nn_interface_CAM
 use netcdf
 use nn_convection_flux_mod, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize, &
-                                  esati, qsati, qsatw, dtqsatw, dtqsati
+                                  esati, rsati, rsatw, dtrsatw, dtrsati
 use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
                           a_bg, a_pr, an, bn, ap, bp, &
@@ -545,7 +545,6 @@ contains
         !! q is total water qv/c/i is cloud vapor/liquid/ice
         !! Convert CAM absolute temperature to moist static energy t used by SAM
         !! by inverting lines 49-53 of diagnose.f90 from SAM where
-        !! qn is cloud water + ice, qp is precipitable water (0 here)
 
         !! WARNING: This routine uses gamaz(k) which is defined on the SAM grid.
         !!          Using a grid that does not match the SAM grid for input/output
@@ -619,7 +618,7 @@ contains
         real(8) :: tabs1
             !! Temporary variable for tabs
 
-        != unit kg/kg :: q, qn, qv, qc, qi
+        != unit kg/kg :: r, qv, qc, qi
         real(8), intent(in) :: r(:, :)
             !! Total non-precipitating water mixing ratio from SAM
         real(8), intent(out) :: qv(:, :)
@@ -628,15 +627,13 @@ contains
             !! Cloud water (liquid) in CAM
         real(8), intent(out) :: qi(:, :)
             !! Cloud ice in CAM
-        real(8) :: qn
-            !! Cloud liquid + cloud ice
 
         != K :: t
         real(8), intent(in) :: t(:, :)
             !! normalised liquid ice static energy
 
         ! Intermediate variables
-        real(8) :: qsat, om, omn, dtabs, dqsat, lstarn, dlstarn, fff, dfff, rv, r_temp
+        real(8) :: rsat, om, omn, dtabs, drsat, lstarn, dlstarn, fff, dfff, rn, rv, r_temp
 
         nx = size(tabs, 1)
         nz = size(tabs, 2)
@@ -656,18 +653,18 @@ contains
             ! Set saturation vapour based on cloud type
             ! Warm cloud:
             if(tabs1.ge.tbgmax) then
-                qsat = qsatw(tabs1,pres(k))
+                rsat = rsatw(tabs1,pres(k))
             ! Ice cloud:
             elseif(tabs1.le.tbgmin) then
-                qsat = qsati(tabs1,pres(k))
+                rsat = rsati(tabs1,pres(k))
             ! Mixed-phase cloud:
             else
                 om = an*tabs1-bn
-                qsat = om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
+                rsat = om*rsatw(tabs1,pres(k))+(1.-om)*rsati(tabs1,pres(k))
             endif
 
             !  Test if condensation is possible (humidity is above saturation) and iterate:
-            if(r_temp .gt. qsat) then
+            if(r_temp .gt. rsat) then
                 niter=0
                 dtabs = 100.
                 do while(abs(dtabs).gt.0.01.and.niter.lt.10)
@@ -676,40 +673,40 @@ contains
                         om=1.
                         lstarn=fac_cond
                         dlstarn=0.
-                        qsat=qsatw(tabs1,pres(k))
-                        dqsat=dtqsatw(tabs1,pres(k))
+                        rsat=rsatw(tabs1,pres(k))
+                        drsat=dtrsatw(tabs1,pres(k))
                     ! Ice cloud regime
                     else if(tabs1.le.tbgmin) then
                         om=0.
                         lstarn=fac_sub
                         dlstarn=0.
-                        qsat=qsati(tabs1,pres(k))
-                        dqsat=dtqsati(tabs1,pres(k))
+                        rsat=rsati(tabs1,pres(k))
+                        drsat=dtrsati(tabs1,pres(k))
                     ! Mixed cloud regime
                     else
                         om=an*tabs1-bn
                         lstarn=fac_cond+(1.-om)*fac_fus
                         dlstarn=an
-                        qsat=om*qsatw(tabs1,pres(k))+(1.-om)*qsati(tabs1,pres(k))
-                        dqsat=om*dtqsatw(tabs1,pres(k))+(1.-om)*dtqsati(tabs1,pres(k))
+                        rsat=om*rsatw(tabs1,pres(k))+(1.-om)*rsati(tabs1,pres(k))
+                        drsat=om*dtrsatw(tabs1,pres(k))+(1.-om)*dtrsati(tabs1,pres(k))
                     endif
 
                     ! Update thermodynamics and check for convergence
-                    fff = tabs(i,k)-tabs1+lstarn*(r_temp-qsat)
-                    dfff=dlstarn*(r_temp-qsat)-lstarn*dqsat-1.
+                    fff = tabs(i,k)-tabs1+lstarn*(r_temp-rsat)
+                    dfff=dlstarn*(r_temp-rsat)-lstarn*drsat-1.
                     dtabs=-fff/dfff
                     niter=niter+1
                     tabs1=tabs1+dtabs
                end do
 
                ! Update saturation point and then calculate water and residual vapour content
-               qsat = qsat + dqsat * dtabs
-               qn = max(0., r_temp-qsat)
-               rv = max(0., r_temp-qn)
+               rsat = rsat + drsat * dtabs
+               rn = max(0., r_temp-rsat)
+               rv = max(0., r_temp-rn)
 
-            ! If condensation not possible qn is 0.0
+            ! If condensation not possible rn is 0.0
             else
-              qn = 0.
+              rn = 0.
               rv = r_temp
 
             endif
@@ -717,12 +714,12 @@ contains
             ! Set tabs to iterated tabs after convection
             tabs(i,k) = tabs1
 
-            ! Code for calculating qc and qi from qn.
-            ! Taken from statistics.f90 in SAM assuming dokruegermicro=.false.
+            ! Code for calculating qc and qi from rn.
+            ! Adapted from statistics.f90 in SAM assuming dokruegermicro=.false.
             ! Also implements conversion from SAM dry mixing ratios to CAM moist mixing ratios
             omn = omegan(tabs(i,k))
-            qc(i,k) = qn*omn/(1.+rv)
-            qi(i,k) = qn*(1.-omn)/(1.+rv)
+            qc(i,k) = rn*omn/(1.+rv)
+            qi(i,k) = rn*(1.-omn)/(1.+rv)
             qv(i,k) = rv/(1.+rv)
 
         end do
