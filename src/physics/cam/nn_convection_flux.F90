@@ -421,6 +421,10 @@ contains
 
     != unit 1 :: rsatw
     real(8) function rsatw(t,p)
+<<<<<<< HEAD
+=======
+      implicit none
+>>>>>>> dfffd787 (rename q to r when relating to SAM as CAM uses q for moist mixing and SAM is dry mixing.)
       != unit K :: t
       real(8), intent(in) :: t  ! temperature
 
@@ -447,8 +451,14 @@ contains
 
 
     real(8) function dtrsatw(t,p)
+<<<<<<< HEAD
       real(8), intent(in) :: t  ! temperature (K)
       real(8), intent(in) :: p  ! pressure    (mb)
+=======
+      implicit none
+      real(8) :: t  ! temperature (K)
+      real(8) :: p  ! pressure    (mb)
+>>>>>>> dfffd787 (rename q to r when relating to SAM as CAM uses q for moist mixing and SAM is dry mixing.)
       dtrsatw=0.622*dtesatw(t)/p
     end function dtrsatw
 
@@ -469,6 +479,10 @@ contains
 
     != unit 1 :: rsati
     real(8) function rsati(t,p)
+<<<<<<< HEAD
+=======
+      implicit none
+>>>>>>> dfffd787 (rename q to r when relating to SAM as CAM uses q for moist mixing and SAM is dry mixing.)
       != unit t :: K
       real(8), intent(in) :: t  ! temperature
 
@@ -497,8 +511,14 @@ contains
 
 
     real(8) function dtrsati(t,p)
+<<<<<<< HEAD
       real(8), intent(in) :: t  ! temperature (K)
       real(8), intent(in) :: p  ! pressure    (mb)
+=======
+      implicit none
+      real(8) :: t  ! temperature (K)
+      real(8) :: p  ! pressure    (mb)
+>>>>>>> dfffd787 (rename q to r when relating to SAM as CAM uses q for moist mixing and SAM is dry mixing.)
       dtrsati = 0.622 * dtesati(t) / p
     end function dtrsati
 
