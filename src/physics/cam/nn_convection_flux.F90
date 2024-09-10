@@ -17,7 +17,7 @@ private
 !---------------------------------------------------------------------
 ! public interfaces
 public  nn_convection_flux, nn_convection_flux_init, nn_convection_flux_finalize, &
-        esati, qsati, qsatw, dtqsatw, dtqsati
+        esati, rsati, rsatw, dtrsatw, dtrsati
 
 
 !---------------------------------------------------------------------
@@ -156,7 +156,7 @@ contains
 
         ! Other variables
         real(8),   dimension(nrf) :: omp, fac
-        real(8),   dimension(size(tabs_i, 2)) :: qsat, irhoadz, irhoadzdz
+        real(8),   dimension(size(tabs_i, 2)) :: rsat, irhoadz, irhoadzdz
 
         ! -----------------------------------
         ! variables for NN
@@ -216,9 +216,9 @@ contains
             ! ! If using generalised relative humidity convert non-precip. water content to rel. hum
             !     do k=1,nzm
             !         omn = omegan(tabs(i,j,k))
-            !         qsat(k) = omn * qsatw(tabs(i,j,k),pres(k)) + (1.-omn) * qsati(tabs(i,j,k),pres(k))
+            !         rsat(k) = omn * rsatw(tabs(i,j,k),pres(k)) + (1.-omn) * rsati(tabs(i,j,k),pres(k))
             !     end do
-            !     features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,j,1:input_ver_dim)/qsat(1:input_ver_dim),4)
+            !     features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,j,1:input_ver_dim)/rsat(1:input_ver_dim),4)
             !     dim_counter = dim_counter + input_ver_dim
             ! else
             ! ! if using non-precipitating water as water content
@@ -398,12 +398,14 @@ contains
 
 
     !-----------------------------------------------------------------
-    ! Need qsatw functions to:
+    ! Need rsatw functions to:
     !     - run with rf_uses_rh option (currently unused)
     !     - convert variables in CAM interface
     ! Ripped from SAM model:
     ! https://github.com/yaniyuval/Neural_nework_parameterization/blob/f81f5f695297888f0bd1e0e61524590b4566bf03/sam_code_NN/sat.f90
-
+    ! Note r is used instead of q as q in CAM signifies a moist mixing ratio whilst SAM
+    ! uses dry mixing ratios.
+    !
     ! Saturation vapor pressure and mixing ratio.
     ! Based on Flatau et.al, (JAM, 1992:1507)
 
@@ -431,8 +433,8 @@ contains
     end function esatw
 
 
-    != unit 1 :: qsatw
-    real(8) function qsatw(t,p)
+    != unit 1 :: rsatw
+    real(8) function rsatw(t,p)
       implicit none
       != unit K :: t
       real(8) :: t  ! temperature
@@ -442,8 +444,8 @@ contains
       real(8) :: esat
 
       esat = esatw(t)
-      qsatw = 0.622 * esat/max(esat, p-esat)
-    end function qsatw
+      rsatw = 0.622 * esat/max(esat, p-esat)
+    end function rsatw
 
 
     real(8) function dtesatw(t)
@@ -460,12 +462,12 @@ contains
     end function dtesatw
 
 
-    real(8) function dtqsatw(t,p)
+    real(8) function dtrsatw(t,p)
       implicit none
       real(8) :: t  ! temperature (K)
       real(8) :: p  ! pressure    (mb)
-      dtqsatw=0.622*dtesatw(t)/p
-    end function dtqsatw
+      dtrsatw=0.622*dtesatw(t)/p
+    end function dtrsatw
 
 
     real(8) function esati(t)
@@ -483,8 +485,8 @@ contains
     end function esati
 
 
-    != unit 1 :: qsati
-    real(8) function qsati(t,p)
+    != unit 1 :: rsati
+    real(8) function rsati(t,p)
       implicit none
       != unit t :: K
       real(8) :: t  ! temperature
@@ -495,8 +497,8 @@ contains
       != unit mb :: esat
       real(8) :: esat
       esat = esati(t)
-      qsati = 0.622 * esat/max(esat,p-esat)
-    end function qsati
+      rsati = 0.622 * esat/max(esat,p-esat)
+    end function rsati
 
 
     real(8) function dtesati(t)
@@ -514,12 +516,12 @@ contains
     end function dtesati
 
 
-    real(8) function dtqsati(t,p)
+    real(8) function dtrsati(t,p)
       implicit none
       real(8) :: t  ! temperature (K)
       real(8) :: p  ! pressure    (mb)
-      dtqsati = 0.622 * dtesati(t) / p
-    end function dtqsati
+      dtrsati = 0.622 * dtesati(t) / p
+    end function dtrsati
 
 
 end module nn_convection_flux_mod
