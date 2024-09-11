@@ -117,7 +117,7 @@ subroutine yog_init()
   call addfld ('YOGDQ  ',   (/ 'lev' /),  'A', 'kg/kg/s','Q tendency - Yuval-OGorman moist convection')
   call addfld ('YOGDICE',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud ice tendency - Yuval-OGorman convection')
   call addfld ('YOGDLIQ',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud liq tendency - Yuval-OGorman convection')
-  call addfld ('YOGPREC',   horiz_only ,  'A', 'm/s','Surface preciptation - Yuval-OGorman convection')
+  call addfld ('PREC_YOG',  horiz_only ,  'A', 'm/s','Surface preciptation - Yuval-OGorman convection')
   if (masterproc) then
      write(iulog,*)'YOG output fields added to buffer'
   end if
@@ -126,11 +126,11 @@ subroutine yog_init()
                      history_budget_histfile_num_out = history_budget_histfile_num)
 
   if ( history_budget ) then
-     call add_default('YOGDT  ', history_budget_histfile_num, ' ')
-     call add_default('YOGDQ  ', history_budget_histfile_num, ' ')
-     call add_default('YOGDICE', history_budget_histfile_num, ' ')
-     call add_default('YOGDLIQ', history_budget_histfile_num, ' ')
-     call add_default('YOGPREC', history_budget_histfile_num, ' ')
+     call add_default('YOGDT  ' , history_budget_histfile_num, ' ')
+     call add_default('YOGDQ  ' , history_budget_histfile_num, ' ')
+     call add_default('YOGDICE' , history_budget_histfile_num, ' ')
+     call add_default('YOGDLIQ' , history_budget_histfile_num, ' ')
+     call add_default('PREC_YOG', history_budget_histfile_num, ' ')
   end if
 
   call nn_convection_flux_CAM_init(yog_nn_weights, SAM_sounding)
@@ -224,7 +224,7 @@ subroutine yog_tend(ztodt, state, ptend)
    call outfld('YOGDQ   ',ptend%q(1,1,1) ,pcols   ,lchnk   )
    call outfld('YOGDICE ',ptend%q(1,1,ixcldice) ,pcols   ,lchnk   )
    call outfld('YOGDLIQ ',ptend%q(1,1,ixcldliq) ,pcols   ,lchnk   )
-   call outfld('YOGPREC ',yog_precsfc ,pcols   ,lchnk   )
+   call outfld('PREC_YOG',yog_precsfc ,pcols   ,lchnk   )
 end subroutine yog_tend
 
 !=========================================================================================
