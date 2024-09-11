@@ -173,10 +173,6 @@ contains
         ! These are calculated following a conversion of the "new" SAM variables back
         ! CAM-space to reduce numerical errors (e.g. tendency is zero).
         call SAM_var_conversion(t_sam, r_sam, tabs0_sam, qv0_sam, qc0_sam, qi0_sam)
-
-        ! TODO Decide whether the 'reconverted' tabs or the interpolated from CAM tabs
-        ! is best here. Consider also plotting to check.
-        ! tabs0_sam = tabs_sam
         r0_sam = r_sam
 
         !-----------------------------------------------------
@@ -186,9 +182,8 @@ contains
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
         ! sedimentation (dt = -dq*(latent_heat/cp)),
         ! radiation rest tendency (multiply by dtn to get dt)
-        call nn_convection_flux(tabs0_sam, r0_sam, &
-                                tabs_sam, &
-                                t_sam, r_sam, &
+        call nn_convection_flux(tabs0_sam(:,1:nrf), r0_sam(:,1:nrf), &
+                                t_sam(:,1:nrf), r_sam(:,1:nrf), &
                                 rho, adz, dz, dtn, &
                                 precsfc_i)
         ! Update precsfc with prec from this timestep
