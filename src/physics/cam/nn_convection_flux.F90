@@ -55,8 +55,12 @@ contains
     end subroutine nn_convection_flux_init
 
 
+<<<<<<< HEAD
     subroutine nn_convection_flux(tabs_i, q_i, &
                                   tabs, &
+=======
+    subroutine nn_convection_flux(tabs_i, q_i, y_in, &
+>>>>>>> 3a7eb8c2 (Remove double temperature inputs to the YOG scheme. Use only value reinterpolated to CAM space.)
                                   t, q, &
                                   rho, adz, dz, dtn, &
                                   precsfc)
@@ -71,9 +75,9 @@ contains
         ! ---------------------
         ! Fields from beginning of time step used as NN inputs
         ! ---------------------
-        != unit s :: tabs_i
+        != unit K :: tabs_i
         real(8), intent(in) :: tabs_i(:, :)
-            !! Temperature
+            !! Absolute Temperature
 
         != unit 1 :: q_i
         real(8), intent(in) :: q_i(:, :)
@@ -82,10 +86,17 @@ contains
         ! ---------------------
         ! Other fields from SAM
         ! ---------------------
+<<<<<<< HEAD
         != unit K :: tabs
         real(8), intent(in) :: tabs(:, :)
             !! absolute temperature
         
+=======
+        != unit m :: y_in
+        real(8), intent(in) :: y_in(:)
+            !! Distance of column from equator (proxy for insolation and sfc albedo)
+
+>>>>>>> 3a7eb8c2 (Remove double temperature inputs to the YOG scheme. Use only value reinterpolated to CAM space.)
         != unit (J / kg) :: t
         real(8), intent(inout) :: t(:, :)
             !! Liquid Ice static energy (cp*T + g*z − L(qliq + qice) − Lf*qice)
@@ -206,8 +217,13 @@ contains
             ! if (rf_uses_rh) then
             ! ! If using generalised relative humidity convert non-precip. water content to rel. hum
             !     do k=1,nzm
+<<<<<<< HEAD
             !         omn = omegan(tabs(i,j,k))
             !         rsat(k) = omn * rsatw(tabs(i,j,k),pres(k)) + (1.-omn) * rsati(tabs(i,j,k),pres(k))
+=======
+            !         omn = omegan(tabs_i(i,j,k))
+            !         qsat(k) = omn * qsatw(tabs_i(i,j,k),pres(k)) + (1.-omn) * qsati(tabs_i(i,j,k),pres(k))
+>>>>>>> 3a7eb8c2 (Remove double temperature inputs to the YOG scheme. Use only value reinterpolated to CAM space.)
             !     end do
             !     features(dim_counter+1:dim_counter+input_ver_dim) = real(q_i(i,j,1:input_ver_dim)/rsat(1:input_ver_dim),4)
             !     dim_counter = dim_counter + input_ver_dim
@@ -291,7 +307,7 @@ contains
 
             ! ensure autoconversion tendency won't reduce q below 0
             do k=1,nrf
-                omp(k) = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
+                omp(k) = max(0.,min(1.,(tabs_i(i,k)-tprmin)*a_pr))
                 fac(k) = (fac_cond + fac_fus * (1.0 - omp(k)))
                 if (q_tend_auto(k).lt.0) then
                     q_delta_auto(i,k) = - min(-q_tend_auto(k) * dtn, q(i,k))
