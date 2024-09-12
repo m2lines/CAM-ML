@@ -557,8 +557,8 @@ contains
             !! Counters
         real(8) :: omn
             !! intermediate omn factor used in variable conversion
-        real(8) :: rv
-            !! intermediate rv to hold dry mixing ratio
+        real(8) :: rv, rc, ri
+            !! intermediate r values to hold dry mixing ratios of vapour, cld, ice
 
         ! ---------------------
         ! Fields from CAM/SAM
@@ -586,13 +586,15 @@ contains
           do i = 1, nx
             ! Calculate dry mixing ratio as required by SAM from moist variables as provided by CAM
             rv = qv(i,k) / (1. - qv(i,k))
-            r(i,k) = rv + qc(i,k)*(1.+rv) + qi(i,k)*(1.+rv)
+            rc = qc(i,k) * (1.+rv)
+            ri = qi(i,k) * (1.+rv)
+            r(i,k) = rv + rc + ri
 
             ! omp  = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
             omn  = max(0.,min(1.,(tabs(i,k)-tbgmin)*a_bg))
             t(i,k) = tabs(i,k) &
                    ! - (fac_cond+(1.-omp)*fac_fus)*qp(i,k) &  ! There is no qp in CAM
-                     - (fac_cond+(1.-omn)*fac_fus)*(qc(i,k)*(1.+rv) + qi(i,k)*(1.+rv)) &
+                     - (fac_cond+(1.-omn)*fac_fus)*(rc + ri) &
                      + gamaz(k)
           end do
         end do
