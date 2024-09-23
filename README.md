@@ -70,7 +70,7 @@ Add the following lines:
     This will be the identifier for our new convection scheme.\
     If running a comparison to the ZM scheme also add `run_deep_comp = 'on'`.
 3. `nn_weights = '<PATH/TO/WEIGHTS.nc>'`\
-    The path to the nn weights.
+    The path to the NN weights.
 4. `SAM_sounding = '<PATH/TO/SAM/SOUNDING.nc>'`\
     The path to the SAM sounding for the NN.\
     This file is generated using the `sounding_to_netcdf.py` script in the resources of the NN code.
@@ -97,3 +97,11 @@ CAM Documentation - https://ncar.github.io/CAM/doc/build/html/index.html
 CAM6 namelist settings - http://www.cesm.ucar.edu/models/cesm2/settings/current/cam_nml.html
 
 Please see the [wiki](https://github.com/ESCOMP/CAM/wiki) for information.
+
+## Contributing
+
+Contributions to the repository are welcome.
+
+Open tickets can be viewed at [**Issues**](https://github.com/m2lines/CAM-ML/issues).
+
+To contribute, find a relevant issue or open a new one and assign yourself to work on it. Then create a branch in which to add your contribution and open a pull request. Once ready assign a reviewer and request a code review. Merging should only be performed once a code review has taken place.
