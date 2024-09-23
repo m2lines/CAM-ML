@@ -85,10 +85,9 @@ to generate both ZM and YOG output diagnostics.
 We can then run `./case.setup` and `./case.build`.
 
 **Note:**  
-By default CESM will place output in `/glade/scratch/user/case/`
+By default CESM will place output on NCAR's supercomputer Derecho in `/glade/scratch/user/case/`
 and logs/restart files in `/glade/scratch/user/archive/case/`.
-To place all output with logs in `archive/case` switch 'short term archiving' on by
-editing `env_run.xml` in the case directory to change `DOUT_S` from `FALSE` to `TRUE`.
+To place all output with logs in `archive/case` switch 'short term archiving' on by editing `env_run.xml` in the case directory to change `DOUT_S` from `FALSE` to `TRUE`.
 
 ## CAM Documentation
 
