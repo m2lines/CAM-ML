@@ -1,7 +1,6 @@
 # CAM-ML: A Fork of The Community Atmosphere Model Implementing a Machine Learning Convection Parameterisation
 
-This Fork of the CAM model is a version in which we are aiming to implement a new
-convection parameterisation, YOG.
+This Fork of the CAM model implements a new convection parameterisation, YOG.
 The parameterisation is a machine learning implementation using a neural net trained
 on high-resolution cloud-resolving simulations in the SAM model as described in:\
 
@@ -17,6 +16,8 @@ The work is contained in a `CAM-ML` branch which is based off the `cam_cesm2_1_r
 tag.
 
 ## Using this model in a CESM Run
+
+This section describes how to use CAM-ML as an external plug-in in a normal CESM run. 
 
 ### Obtaining CESM
 
