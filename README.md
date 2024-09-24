@@ -12,8 +12,9 @@ on high-resolution cloud-resolving simulations in the SAM model as described in:
   _Use of Neural Networks for Stable, Accurate and Physically Consistent Parameterization of Subgrid Atmospheric Processes With Good Performance at Reduced Precision_
   Geophysical Research Letters, 48, e2020GL091363 (2021). DOI: [10.1029/2020GL091363](https://doi.org/10.1029/2020GL091363)
 
-The work is contained in a `CAM-ML` branch which is based off the `cam_cesm2_1_rel_60`
-tag.
+The work is contained in a `CAM-ML` branch which is based off the `cam_cesm2_1_rel_60` tag.
+
+Note that the `doc` folder and `README_EXTERNALS` are not updated, but just artifacts from the fork that we are keeping to be able to merge back to CESM later. 
 
 ## Using this model in a CESM Run
 
@@ -62,30 +63,27 @@ For this work we are using the gate III testcase which can be set up by running:
 ```
 from `<cesm_root>/cime/scripts/`.
 
+`<path_to_testcase_directory>` should be a separate directory outside of the code directory, to avoid cluttering up the local repository.
+
 Once this has been done then edit `user_nl_cam` for the case as detailed below.
 This is a CAM namelist generated from the default for the case.
 Add the following lines:
 
-1. `deep_scheme = 'YOG'`\
-    This will be the identifier for our new convection scheme.\
+1. `deep_scheme = 'off'`\
+    If you want to run with the new YOG convection scheme, add `yog_scheme = 'on'`, as 	well.\
     If running a comparison to the ZM scheme also add `run_deep_comp = 'on'`.
-3. `nn_weights = '<PATH/TO/WEIGHTS.nc>'`\
-    The path to the NN weights.
-4. `SAM_sounding = '<PATH/TO/SAM/SOUNDING.nc>'`\
+2. `yog_nn_weights = '<PATH/TO/WEIGHTS.nc>'`\
+    The path to the NN weights. There are some weights in `src/physics/cam/' 			which can be used, or they can be generated from the [standalone model](https://github.com/m2lines/convection-parameterization-in-CAM).
+3. `SAM_sounding = '<PATH/TO/SAM/SOUNDING.nc>'`\
     The path to the SAM sounding for the NN.\
-    This file is generated using the `sounding_to_netcdf.py` script in the resources of the NN code.
+    This file is generated using the `sounding_to_netcdf.py` script in the resources of the [standalone NN code](https://github.com/m2lines/convection-parameterization-in-CAM), and it can be just copied over to a suitable place.
 
-Also consider adding:
-```
-fincl2 = 'ZMDT', 'ZMDQ'
-fincl3 = 'YOGDT', 'YOGDQ'
-```
-to generate both ZM and YOG output diagnostics.
+All the paths have to be absolute, as they will be used when the code is run on the compute nodes.
 
-We can then run `./case.setup` and `./case.build`.
+We can then run `./case.setup` and `./case.build, and ./case.submit to submit the job to the scheduler.
 
 **Note:**  
-By default CESM will place output on NCAR's supercomputer Derecho in `/glade/scratch/user/case/`
+By default, CESM will place output on NCAR's supercomputer Derecho in `/glade/scratch/user/case/`
 and logs/restart files in `/glade/scratch/user/archive/case/`.
 To place all output with logs in `archive/case` switch 'short term archiving' on by editing `env_run.xml` in the case directory to change `DOUT_S` from `FALSE` to `TRUE`.
 
