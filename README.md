@@ -63,7 +63,7 @@ For this work we are using the gate III testcase which can be set up by running:
 ```
 from `<cesm_root>/cime/scripts/`.
 
-`<path_to_testcase_directory>` should be a separate directory outside of the code directory, to avoid cluttering up the local repository.
+The `<testcase_directory>` should be a separate directory outside of the code directory, to avoid cluttering up the local repository.
 
 Once this has been done then edit `user_nl_cam` for the case as detailed below.
 This is a CAM namelist generated from the default for the case.
@@ -73,14 +73,14 @@ Add the following lines:
     If you want to run with the new YOG convection scheme, add `yog_scheme = 'on'`, as 	well.\
     If running a comparison to the ZM scheme also add `run_deep_comp = 'on'`.
 2. `yog_nn_weights = '<PATH/TO/WEIGHTS.nc>'`\
-    The path to the NN weights. There are some weights in `src/physics/cam/' 			which can be used, or they can be generated from the [standalone model](https://github.com/m2lines/convection-parameterization-in-CAM).
+    The path to the NN weights. There are some weights in `src/physics/cam/' of this respository (CAM-ML) which can be used, or they can be generated from the [standalone model](https://github.com/m2lines/convection-parameterization-in-CAM).
 3. `SAM_sounding = '<PATH/TO/SAM/SOUNDING.nc>'`\
     The path to the SAM sounding for the NN.\
     This file is generated using the `sounding_to_netcdf.py` script in the resources of the [standalone NN code](https://github.com/m2lines/convection-parameterization-in-CAM), and it can be just copied over to a suitable place.
 
 All the paths have to be absolute, as they will be used when the code is run on the compute nodes.
 
-We can then run `./case.setup` and `./case.build, and ./case.submit to submit the job to the scheduler.
+We can then run `./case.setup` and `./case.build`to setup and build the test case, and `./case.submit` to submit the job to the scheduler.
 
 **Note:**  
 By default, CESM will place output on NCAR's supercomputer Derecho in `/glade/scratch/user/case/`
