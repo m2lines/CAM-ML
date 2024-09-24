@@ -51,7 +51,7 @@ You can now run, from within the CESM root directory,
 to fetch the external components. 
 
 **Note**   
-If you want to change the externals, or have made a mistake in this step, you have to delete the newly created `components` folder in the base directory before you rerun `checkout_externals`.)
+If you want to change the externals, or have made a mistake in this step, you have to delete the newly created `components` folder (or the respective subfolders therein) in the base directory before you rerun `checkout_externals`.)
 
 ### Creating and running a case
 
