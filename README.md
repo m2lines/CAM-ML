@@ -19,7 +19,7 @@ Information specific to running this fork of CAM within CESM is included in this
 
 ## Using this model in a CESM Run
 
-This section describes how to use CAM-ML as an external plug-in in a normal CESM run. 
+This section describes how to use CAM-ML as the atmospheric component in a normal CESM run. 
 
 ### Obtaining CESM
 
