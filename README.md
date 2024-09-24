@@ -14,7 +14,8 @@ on high-resolution cloud-resolving simulations in the SAM model as described in:
 
 The work is contained in a `CAM-ML` branch which is based off the `cam_cesm2_1_rel_60` tag.
 
-Note that the `doc` folder and `README_EXTERNALS` are not updated, but just artifacts from the fork that we are keeping to be able to merge back to CESM later. 
+Note that the `doc` folder and `README_EXTERNALS` are not updated, but just artifacts from the fork that we are keeping to be able to merge back to CESM later.
+Information specific to running this fork of CAM within CESM is included in this README.
 
 ## Using this model in a CESM Run
 
