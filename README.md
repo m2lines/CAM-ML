@@ -19,7 +19,7 @@ Information specific to running this fork of CAM within CESM is included in this
 
 ## Using this model in a CESM Run
 
-This section describes how to use CAM-ML as the atmospheric component in a normal CESM run. 
+This section describes how to use CAM-ML as the atmospheric component in a normal CESM run. In its current build pipeline, the code assumes that it is run on NCAR's supercomputer Derecho.
 
 ### Obtaining CESM
 
@@ -84,10 +84,18 @@ All the paths have to be absolute, as they will be used when the code is run on 
 We can then run `./case.setup` and `./case.build`to setup and build the test case, and `./case.submit` to submit the job to the scheduler.
 
 **Note:**  
-By default, CESM will place outputs and logs/restart files on NCAR's supercomputer Derecho in `/glade/scratch/user/archive/case/`.
-Outputs of failed runs can be found in`/glade/scratch/user/case/`.
+By default, CESM will place outputs and logs/restart files on Derecho in `/glade/derecho/scratch/<user>/archive/<case>/`.
+Outputs of failed runs can be found in`/glade/derecho/scratch/<user>/<case>/`.
 
 To place all output with logs in `archive/case` switch 'short term archiving' on by editing `env_run.xml` in the case directory to change `DOUT_S` from `FALSE` to `TRUE` -- you can do this quickly by running `﻿./xmlchange DOUT_S=FALSE`.
+
+### Expected Output
+
+The run will create a `bld` and a `run` directory in the case folder. The `bld` directory contains build files, logs and executables. The `run` directory contains the run logs, namelists and output Netcdf files.
+
+A successful model run will have the line \
+`******* END OF MODEL RUN *******` \
+at the bottom of the run log file (e.g., for the atmosphere run, `atm.log.<stuff>.gz`).
 
 ## CAM Documentation
 
