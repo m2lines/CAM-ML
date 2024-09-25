@@ -107,6 +107,14 @@ A model run will also generate timing files in a subdirectory of the the caseroo
 Further information on this can be found in the [Timers and timing section of the CIME documentation](https://esmci.github.io/cime/versions/master/html/users_guide/timers.html). 
 
 
+### Expected Output
+
+The run will create a `bld` and a `run` directory in the case folder. The `bld` directory contains build files, logs and executables. The `run` directory contains the run logs, namelists and output Netcdf files.
+
+A successful model run will have the line \
+`******* END OF MODEL RUN *******` \
+at the bottom of the run log file (e.g., for the atmosphere run, `atm.log.<stuff>.gz`).
+
 ## CAM Documentation
 
 CAM Documentation - https://ncar.github.io/CAM/doc/build/html/index.html
