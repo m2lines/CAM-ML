@@ -91,11 +91,11 @@ To place all output with logs in `archive/case` switch 'short term archiving' on
 
 ### Expected Output
 
-The run will create a `bld` and a `run` directory in the case folder. The `bld` directory contains build files, logs and executables. The `run` directory contains the run logs, namelists and output Netcdf files.
+The run will create a `bld` and a `run` directory in the output case folder on `/glade/derecho/scratch/<user>/. The `bld` directory contains build files, logs and executables. The `run` directory contains the run logs, namelists and output NetCDF files.
 
 A successful model run will have the line \
 `******* END OF MODEL RUN *******` \
-at the bottom of the run log file (e.g., for the atmosphere run, `atm.log.<stuff>.gz`).
+at the bottom of the run log file for the atmosphere run, i.e.,  `atm.log.<stuff>.gz`.
 
 ## CAM Documentation
 
