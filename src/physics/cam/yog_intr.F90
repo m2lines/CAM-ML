@@ -113,11 +113,13 @@ subroutine yog_init()
   integer :: history_budget_histfile_num ! output history file number for budget fields
 
   ! Register fields with the output buffer
-  call addfld ('YOGDT  ',   (/ 'lev' /),  'A', 'K/s','T tendency - Yuval-OGorman moist convection')
-  call addfld ('YOGDQ  ',   (/ 'lev' /),  'A', 'kg/kg/s','Q tendency - Yuval-OGorman moist convection')
-  call addfld ('YOGDICE',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud ice tendency - Yuval-OGorman convection')
-  call addfld ('YOGDLIQ',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud liq tendency - Yuval-OGorman convection')
-  call addfld ('YOGPREC',   horiz_only ,  'A', 'm/s','Surface preciptation - Yuval-OGorman convection')
+  call addfld ('YOGDT  ',    (/ 'lev' /),  'A', 'K/s','T tendency - Yuval-OGorman moist convection')
+  call addfld ('YOGDQ  ',    (/ 'lev' /),  'A', 'kg/kg/s','Q tendency - Yuval-OGorman moist convection')
+  call addfld ('YOGDICE',    (/ 'lev' /),  'A', 'kg/kg/s','Cloud ice tendency - Yuval-OGorman convection')
+  call addfld ('YOGDLIQ',    (/ 'lev' /),  'A', 'kg/kg/s','Cloud liq tendency - Yuval-OGorman convection')
+  call addfld ('YOGPREC',    horiz_only ,  'A', 'm/s','Surface preciptation - Yuval-OGorman convection')
+  call addfld ('YOGDNUMLIQ', (/ 'lev' /),  'A', 'N/s','Cloud liq number conc. tendency - Yuval-OGorman convection')
+  call addfld ('YOGDNUMICE', (/ 'lev' /),  'A', 'N/s','Cloud ice number conc. tendency - Yuval-OGorman convection')
   if (masterproc) then
      write(iulog,*)'YOG output fields added to buffer'
   end if
@@ -131,6 +133,8 @@ subroutine yog_init()
      call add_default('YOGDICE', history_budget_histfile_num, ' ')
      call add_default('YOGDLIQ', history_budget_histfile_num, ' ')
      call add_default('YOGPREC', history_budget_histfile_num, ' ')
+     call add_default('YOGDNUMLIQ', history_budget_histfile_num, ' ')
+     call add_default('YOGDNUMICE', history_budget_histfile_num, ' ')
   end if
 
   call nn_convection_flux_CAM_init(yog_nn_weights, SAM_sounding)
@@ -182,13 +186,15 @@ subroutine yog_tend(ztodt, state, ptend)
 
    ! Local variables
 
-   integer :: i
+   integer :: i, k
    integer :: nstep
    integer :: ixcldice, ixcldliq      ! constituent indices for cloud liquid and ice water.
+   integer :: ixnumice, ixnumliq      ! constituent indices for cloud liquid and ice number concentration.
    integer :: lchnk                   ! chunk identifier
    integer :: ncol                    ! number of atmospheric columns
 
    real(r8) :: ftem(pcols,pver)       ! Temporary workspace for outfld variables
+   real(r8) :: num_tem                ! Temporary holder for number tendency
 
    logical  :: lq(pcnst)
 
@@ -208,7 +214,7 @@ subroutine yog_tend(ztodt, state, ptend)
 
    lq(:) = .true.
    call physics_ptend_init(ptend, state%psetcols, 'yogNN', ls=.true., lq=lq(:))! initialize ptend type for YOG
- 
+
    call nn_convection_flux_CAM(state%pmid(:,pver:1:-1), state%pint(:,pverp:1:-1), state%ps, &
                                state%t(:,pver:1:-1), state%q(:,pver:1:-1,1), &
                                state%q(:,pver:1:-1,ixcldliq), state%q(:,pver:1:-1,ixcldice), &
@@ -225,6 +231,34 @@ subroutine yog_tend(ztodt, state, ptend)
    call outfld('YOGDICE ',ptend%q(1,1,ixcldice) ,pcols   ,lchnk   )
    call outfld('YOGDLIQ ',ptend%q(1,1,ixcldliq) ,pcols   ,lchnk   )
    call outfld('YOGPREC ',yog_precsfc ,pcols   ,lchnk   )
+
+   ! Update the number concentration tendencies for liquid and ice species for all cells
+   ! Match calculations in the `clubb_tend_cam()` subroutine
+   ! YOG could produce negative number tendency, so we ensure it doesn't reduce total
+   ! number concentration below 0.0 - note that a check on this is also made in physics_update()
+   call cnst_get_ind('NUMLIQ', ixnumliq)
+   call cnst_get_ind('NUMICE', ixnumice)
+   do k = 1, pver
+   do i = 1, ncol
+      ! Liquid
+      num_tem = 3. * ptend%q(i,k,ixcldliq) / (4.0*3.14* 8.0e-6**3*997.0)
+      if (num_tem .lt. 0) then
+         ptend%q(i,k,ixnumliq) = - min(-num_tem, state%q(i,k,ixnumliq)/ztodt)
+      else
+         ptend%q(i,k,ixnumliq) = num_tem
+      endif
+      ! Ice
+      num_tem = 3. * ptend%q(i,k,ixcldice) / (4.0*3.14*25.0e-6**3*500.0)
+      if (num_tem .lt. 0) then
+         ptend%q(i,k,ixnumice) = - min(-num_tem, state%q(i,k,ixnumice)/ztodt)
+      else
+         ptend%q(i,k,ixnumice) = num_tem
+      endif
+   end do
+   end do
+   call outfld('YOGDNUMLIQ ',ptend%q(1,1,ixnumliq) ,pcols   ,lchnk   )
+   call outfld('YOGDNUMICE ',ptend%q(1,1,ixnumice) ,pcols   ,lchnk   )
+
 end subroutine yog_tend
 
 !=========================================================================================
