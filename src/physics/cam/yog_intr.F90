@@ -140,6 +140,9 @@ subroutine yog_init()
      write(iulog,*)'YOG scheme initialised'
   endif
 
+  ! Set up field to write out process number to check domain decomposition
+  call addfld ('PROCNUM', horiz_only, 'A', '-','MPI Process number to show domain decomposition')
+
 end subroutine yog_init
 
 !=========================================================================================
@@ -188,6 +191,7 @@ subroutine yog_tend(ztodt, state, ptend)
    integer :: lchnk                   ! chunk identifier
    integer :: ncol                    ! number of atmospheric columns
 
+   real(r8) :: proc_num(pcols)        ! process number
    real(r8) :: ftem(pcols,pver)       ! Temporary workspace for outfld variables
 
    logical  :: lq(pcnst)
@@ -225,6 +229,11 @@ subroutine yog_tend(ztodt, state, ptend)
    call outfld('YOGDICE ',ptend%q(1,1,ixcldice) ,pcols   ,lchnk   )
    call outfld('YOGDLIQ ',ptend%q(1,1,ixcldliq) ,pcols   ,lchnk   )
    call outfld('YOGPREC ',yog_precsfc ,pcols   ,lchnk   )
+
+  ! Write out process number to check domain decomposition
+   proc_num = lchnk
+   call outfld('PROCNUM', proc_num, pcols, lchnk)
+
 end subroutine yog_tend
 
 !=========================================================================================
