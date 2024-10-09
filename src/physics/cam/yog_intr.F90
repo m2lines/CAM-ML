@@ -13,7 +13,7 @@ module yog_intr
    use ppgrid,       only: pver, pcols, pverp, begchunk, endchunk
    use cam_abortutils,   only: endrun
    use physconst,        only: pi
-   use spmd_utils,       only: masterproc
+   use spmd_utils,       only: masterproc, mpicom
    use perf_mod
    use cam_logfile,  only: iulog
    use constituents, only: cnst_add
@@ -140,6 +140,9 @@ subroutine yog_init()
      write(iulog,*)'YOG scheme initialised'
   endif
 
+  ! Set up field to write out process number to check domain decomposition
+  call addfld ('PROCNUM', horiz_only, 'A', '-','MPI Process number to show domain decomposition')
+
 end subroutine yog_init
 
 !=========================================================================================
@@ -187,7 +190,9 @@ subroutine yog_tend(ztodt, state, ptend)
    integer :: ixcldice, ixcldliq      ! constituent indices for cloud liquid and ice water.
    integer :: lchnk                   ! chunk identifier
    integer :: ncol                    ! number of atmospheric columns
+   integer :: ier, iam                ! Integers for MPI comms
 
+   real(r8) :: proc_num(pcols)        ! process number
    real(r8) :: ftem(pcols,pver)       ! Temporary workspace for outfld variables
 
    logical  :: lq(pcnst)
@@ -225,6 +230,12 @@ subroutine yog_tend(ztodt, state, ptend)
    call outfld('YOGDICE ',ptend%q(1,1,ixcldice) ,pcols   ,lchnk   )
    call outfld('YOGDLIQ ',ptend%q(1,1,ixcldliq) ,pcols   ,lchnk   )
    call outfld('YOGPREC ',yog_precsfc ,pcols   ,lchnk   )
+
+   ! Write out process number to check domain decomposition
+   call mpi_comm_rank (mpicom, iam, ier)
+   proc_num = real(iam, r8)
+   call outfld('PROCNUM', proc_num, pcols, lchnk)
+
 end subroutine yog_tend
 
 !=========================================================================================
