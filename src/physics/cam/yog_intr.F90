@@ -231,7 +231,7 @@ subroutine yog_tend(ztodt, state, ptend)
    call outfld('YOGPREC ',yog_precsfc ,pcols   ,lchnk   )
 
   ! Write out process number to check domain decomposition
-   proc_num = lchnk
+   proc_num = real(lchnk, r8)
    call outfld('PROCNUM', proc_num, pcols, lchnk)
 
 end subroutine yog_tend
