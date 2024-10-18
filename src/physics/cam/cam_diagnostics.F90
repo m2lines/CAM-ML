@@ -60,6 +60,8 @@ type(dqcond_t), allocatable :: dqcond(:)
 character(len=8) :: diag_cnst_conv_tend = 'q_only' ! output constituent tendencies due to convection
                                                    ! 'none', 'q_only' or 'all'
 
+character(len=16) :: yog_scheme     ! Is YOG scheme in use to provide precipitation
+
 integer, parameter :: surf_100000 = 1
 integer, parameter :: surf_092500 = 2
 integer, parameter :: surf_085000 = 3
@@ -92,6 +94,7 @@ integer  ::      t_ttend_idx = 0
 
 integer  ::      prec_dp_idx  = 0
 integer  ::      snow_dp_idx  = 0
+integer  ::      prec_yog_idx = 0
 integer  ::      prec_sh_idx  = 0
 integer  ::      snow_sh_idx  = 0
 integer  ::      prec_sed_idx = 0
@@ -710,6 +713,11 @@ contains
     snow_sed_idx = pbuf_get_index('SNOW_SED', errcode=ierr)
     prec_pcw_idx = pbuf_get_index('PREC_PCW', errcode=ierr)
     snow_pcw_idx = pbuf_get_index('SNOW_PCW', errcode=ierr)
+    ! Check if we are using YOG scheme and create prec variable if neccessary.
+    call phys_getopts(yog_scheme_out = yog_scheme)
+    if (yog_scheme == 'on') then
+      prec_yog_idx = pbuf_get_index('PREC_YOG', errcode=ierr)
+    end if
 
     if (is_first_step()) then
       call pbuf_set_field(pbuf2d, trefmxav_idx, -1.0e36_r8)
@@ -1507,6 +1515,7 @@ contains
     ! convective precipitation variables
     real(r8), pointer :: prec_dp(:)                 ! total precipitation   from ZM convection
     real(r8), pointer :: snow_dp(:)                 ! snow from ZM   convection
+    real(r8), pointer :: prec_yog(:)                ! total precipitation   from YOG convection
     real(r8), pointer :: prec_sh(:)                 ! total precipitation   from Hack convection
     real(r8), pointer :: snow_sh(:)                 ! snow from   Hack   convection
     real(r8), pointer :: prec_sed(:)                ! total precipitation   from ZM convection
@@ -1542,6 +1551,11 @@ contains
         call pbuf_get_field(pbuf, snow_dp_idx, snow_dp)
       else
         nullify(snow_dp)
+      end if
+      if (prec_yog_idx > 0) then
+        call pbuf_get_field(pbuf, prec_yog_idx, prec_yog)
+      else
+        nullify(prec_yog)
       end if
       if (prec_sh_idx > 0) then
         call pbuf_get_field(pbuf, prec_sh_idx, prec_sh)
@@ -1583,6 +1597,9 @@ contains
         precc(:ncol) = prec_sh(:ncol)
       else
         precc(:ncol) = 0._r8
+      end if
+      if (associated(prec_yog)) then
+        precc(:ncol) = precc(:ncol) + prec_yog(:ncol)
       end if
       if (associated(prec_sed) .and. associated(prec_pcw)) then
         precl(:ncol) = prec_sed(:ncol) + prec_pcw(:ncol)
