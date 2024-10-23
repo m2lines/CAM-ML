@@ -32,7 +32,10 @@ module yog_intr
 
    character(len=136) :: yog_nn_weights    ! location of weights for the YOG NN, set in namelist
    character(len=136) :: SAM_sounding  ! location of SAM sounding profile for the YOG NN, set in namelist
-   
+
+   integer :: prec_dp_idx
+
+
 !=========================================================================================
 contains
 !=========================================================================================
@@ -117,7 +120,7 @@ subroutine yog_init()
   call addfld ('YOGDQ  ',   (/ 'lev' /),  'A', 'kg/kg/s','Q tendency - Yuval-OGorman moist convection')
   call addfld ('YOGDICE',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud ice tendency - Yuval-OGorman convection')
   call addfld ('YOGDLIQ',   (/ 'lev' /),  'A', 'kg/kg/s','Cloud liq tendency - Yuval-OGorman convection')
-  call addfld ('YOGPREC',   horiz_only ,  'A', 'm/s','Surface preciptation - Yuval-OGorman convection')
+  call addfld ('PREC_YOG',  horiz_only ,  'A', 'm/s','Surface preciptation - Yuval-OGorman convection')
   if (masterproc) then
      write(iulog,*)'YOG output fields added to buffer'
   end if
@@ -126,11 +129,11 @@ subroutine yog_init()
                      history_budget_histfile_num_out = history_budget_histfile_num)
 
   if ( history_budget ) then
-     call add_default('YOGDT  ', history_budget_histfile_num, ' ')
-     call add_default('YOGDQ  ', history_budget_histfile_num, ' ')
-     call add_default('YOGDICE', history_budget_histfile_num, ' ')
-     call add_default('YOGDLIQ', history_budget_histfile_num, ' ')
-     call add_default('YOGPREC', history_budget_histfile_num, ' ')
+     call add_default('YOGDT  ' , history_budget_histfile_num, ' ')
+     call add_default('YOGDQ  ' , history_budget_histfile_num, ' ')
+     call add_default('YOGDICE' , history_budget_histfile_num, ' ')
+     call add_default('YOGDLIQ' , history_budget_histfile_num, ' ')
+     call add_default('PREC_YOG', history_budget_histfile_num, ' ')
   end if
 
   call nn_convection_flux_CAM_init(yog_nn_weights, SAM_sounding)
@@ -160,16 +163,17 @@ end subroutine yog_final
 
 !=========================================================================================
 
-subroutine yog_tend(ztodt, state, ptend)
+subroutine yog_tend(ztodt, state, ptend, pbuf)
 
 !----------------------------------------
 ! Purpose:  tendency calculation for YOG scheme
 !----------------------------------------
 
-   use cam_history,   only: outfld
-   use physics_types, only: physics_state, physics_ptend
-   use physics_types, only: physics_ptend_init
-   use constituents,  only: pcnst, cnst_get_ind
+   use cam_history,    only: outfld
+   use physics_types,  only: physics_state, physics_ptend
+   use physics_types,  only: physics_ptend_init
+   use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
+   use constituents,   only: pcnst, cnst_get_ind
 
    use nn_interface_CAM,   only: nn_convection_flux_CAM
 
@@ -177,6 +181,7 @@ subroutine yog_tend(ztodt, state, ptend)
 
    type(physics_state), intent(in)          :: state          ! Physics state variables
    type(physics_ptend), intent(out)         :: ptend          ! individual parameterization tendencies
+   type(physics_buffer_desc), pointer       :: pbuf(:)
 
    real(r8), intent(in) :: ztodt                       ! 2 delta t (model time increment)
 
@@ -193,16 +198,18 @@ subroutine yog_tend(ztodt, state, ptend)
    logical  :: lq(pcnst)
 
    ! physics buffer fields
-
    real(r8), pointer, dimension(:)   :: prec         ! total precipitation
-   real(r8), pointer, dimension(:)   :: snow         ! snow
-   real(r8), pointer, dimension(:,:) :: cld
 
    real(r8) :: yog_precsfc(pcols)  ! scattered precip flux at each level
 
    lchnk = state%lchnk
    ncol  = state%ncol
 
+   ! fetch prec_dp from the physics buffer
+   ! Note that prec_dp is initialised in the physics buffer and zeroed for deep_scheme='off'
+   prec_dp_idx     = pbuf_get_index('PREC_DP')
+   call pbuf_get_field(pbuf, prec_dp_idx,     prec )
+   
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
@@ -224,7 +231,12 @@ subroutine yog_tend(ztodt, state, ptend)
    call outfld('YOGDQ   ',ptend%q(1,1,1) ,pcols   ,lchnk   )
    call outfld('YOGDICE ',ptend%q(1,1,ixcldice) ,pcols   ,lchnk   )
    call outfld('YOGDLIQ ',ptend%q(1,1,ixcldliq) ,pcols   ,lchnk   )
-   call outfld('YOGPREC ',yog_precsfc ,pcols   ,lchnk   )
+   call outfld('PREC_YOG',yog_precsfc ,pcols   ,lchnk   )
+
+   ! Add prec_yog to prec_dp for passing to physpkg and coupler
+   ! Note that prec_dp is initialised in the physics buffer and zeroed for deep_scheme='off'
+   prec(:ncol) = prec(:ncol) + yog_precsfc(:ncol)
+
 end subroutine yog_tend
 
 !=========================================================================================

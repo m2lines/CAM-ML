@@ -1969,12 +1969,14 @@ contains
     if (yog_scheme=='on') then
         call t_startf('yog_nn')
 
-        call yog_tend(ztodt, state, ptend)
+        call yog_tend(ztodt, state, ptend, pbuf)
 
         call physics_update(state, ptend, ztodt, tend)
-        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
 
         call t_stopf('yog_nn')
+
+        flx_cnd(:ncol) = prec_dp(:ncol)
+        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, flx_cnd, zero, flx_heat)
     end if
 
     !
