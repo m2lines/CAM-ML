@@ -1969,7 +1969,7 @@ contains
     if (yog_scheme=='on') then
         call t_startf('yog_nn')
 
-        call yog_tend(ztodt, state, ptend)
+        call yog_tend(ztodt, state, ptend, pbuf)
 
         call physics_update(state, ptend, ztodt, tend)
         call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
