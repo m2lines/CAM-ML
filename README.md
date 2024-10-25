@@ -66,8 +66,7 @@ from `<cesm_root>/cime/scripts/`.
 
 The `<testcase_directory>` should be a separate directory outside of the code directory, to avoid cluttering up the local repository.
 
-Once this has been done then edit `user_nl_cam` for the case as detailed below.
-This is a CAM namelist generated from the default for the case.
+Run `./case.setup` for the case setup and creation of namelist files. Optionally, you can also run `./check_case` to check everything is ok. Once this has been done then edit `user_nl_cam` for the case as detailed below. This is a CAM namelist generated from the default for the case.
 Add the following lines:
 
 1. `deep_scheme = 'off'`\
@@ -81,7 +80,7 @@ Add the following lines:
 
 All the paths have to be absolute, as they will be used when the code is run on the compute nodes.
 
-We can then run `./case.setup` and `./case.build`to setup and build the test case, and `./case.submit` to submit the job to the scheduler.
+We can then run `./case.build`to build the test case, and `./case.submit` to submit the job to the scheduler.
 
 **Note:**  
 By default, CESM will place outputs and logs/restart files on Derecho in `/glade/derecho/scratch/<user>/archive/<case>/`.
