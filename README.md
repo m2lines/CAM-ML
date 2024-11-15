@@ -115,6 +115,13 @@ A successful model run will have the line \
 `******* END OF MODEL RUN *******` \
 at the bottom of the run log file for the atmosphere run, i.e.,  `atm.log.<stuff>.gz`.
 
+### Timing 
+
+A model run will also generate timing files in a subdirectory of the the caseroot directory (`<testcase_directory>/timing`), unless you set `﻿./xmlchange CHECK_TIMING=FALSE`. There are other timing files in the output directories on `scratch`, but this one is the most useful.
+
+Further information on this can be found in the [Timers and timing section of the CIME documentation](https://esmci.github.io/cime/versions/master/html/users_guide/timers.html). 
+
+
 ## CAM Documentation
 
 CAM Documentation - https://ncar.github.io/CAM/doc/build/html/index.html
