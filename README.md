@@ -83,10 +83,11 @@ All the paths have to be absolute, as they will be used when the code is run on 
 We can then run `./case.build`to build the test case, and `./case.submit` to submit the job to the scheduler.
 
 **Note:**  
-By default, CESM will place outputs and logs/restart files on Derecho in `/glade/derecho/scratch/<user>/archive/<case>/`.
-Outputs of failed runs can be found in`/glade/derecho/scratch/<user>/<case>/`.
+By default, CESM will place outputs and logs/restart files on Derecho in `/glade/derecho/scratch/<user>/<case>/`, and then move them over to `/glade/derecho/scratch/<user>/archive/<case>/`.
 
-To place all output with logs in `archive/case` switch 'short term archiving' on by editing `env_run.xml` in the case directory to change `DOUT_S` from `FALSE` to `TRUE` -- you can do this quickly by running `﻿./xmlchange DOUT_S=FALSE`.
+To place all output with logs in `archive/<case>` switch 'short term archiving' on by editing `env_run.xml` in the case directory to change `DOUT_S` from `FALSE` to `TRUE` -- you can do this quickly by running `﻿./xmlchange DOUT_S=FALSE`.
+
+(In fact, you will find output files in all three places: `/glade/derecho/scratch/<user>/<case>/` , `/glade/derecho/scratch/<user>/archive/<case>/` -- unless the run has failed and was not moved to `archive`, and `<testcase_directory>`.)
 
 ### Expected Output
 
@@ -95,6 +96,13 @@ The run will create a `bld` and a `run` directory in the output case folder on `
 A successful model run will have the line \
 `******* END OF MODEL RUN *******` \
 at the bottom of the run log file for the atmosphere run, i.e.,  `atm.log.<stuff>.gz`.
+
+### Timing 
+
+A model run will also generate timing files in a subdirectory of the the caseroot directory (`<testcase_directory>/timing`), unless you set `﻿./xmlchange CHECK_TIMING=FALSE`. There are other timing files in the output directories on `scratch`, but this one is the most useful.
+
+Further information on this can be found in the [Timers and timing section of the CIME documentation](https://esmci.github.io/cime/versions/master/html/users_guide/timers.html). 
+
 
 ## CAM Documentation
 
