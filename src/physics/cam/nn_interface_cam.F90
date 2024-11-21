@@ -128,7 +128,7 @@ contains
         precsfc(:)=0.
 
         !-----------------------------------------------------
-        
+
         ! Interpolate CAM variables to the SAM pressure levels
         ! TODO Interpolate all variables in one call
         ! Set surface values
@@ -162,7 +162,7 @@ contains
                            qv_cam(1:ncol, :), qv_sam, qv_surf)
 
         !-----------------------------------------------------
-        
+
         ! Convert CAM Moistures and tabs to SAM q and t
         call  CAM_var_conversion(qv_sam, qc_sam, qi_sam, r_sam, tabs_sam, t_sam)
 
@@ -191,7 +191,7 @@ contains
         precsfc = precsfc + precsfc_i
 
         !-----------------------------------------------------
-        
+
         ! Formulate the output variables to CAM as required.
         call SAM_var_conversion(t_sam, r_sam, tabs_sam, qv_sam, qc_sam, qi_sam)
         ! Convert precipitation from kg/m^2 to m by dividing by density (1000)
@@ -232,7 +232,7 @@ contains
 
     !-----------------------------------------------------------------
     ! Private Subroutines
-    
+
     subroutine interp_to_sam(p_cam, p_surf_cam, var_cam, var_sam, var_cam_surface)
         !! Interpolate from the CAM pressure grid to the SAM pressure grid.
         !! Uses linear interpolation between nearest grid points on domain (CAM) grid.
@@ -534,7 +534,7 @@ contains
 
 
     subroutine CAM_var_conversion(qv, qc, qi, r, tabs, t)
-        !! Convert CAM moist mixing ratios for species qv, qc, qi to 
+        !! Convert CAM moist mixing ratios for species qv, qc, qi to
         !! dry mixing ratio r to used by SAM parameterisation
         !! q is total water qv/c/i is cloud vapor/liquid/ice
         !! Convert CAM absolute temperature to moist static energy t used by SAM
@@ -593,7 +593,7 @@ contains
         end do
 
     end subroutine CAM_var_conversion
-    
+
 
     subroutine SAM_var_conversion(t, r, tabs, qv, qc, qi)
         !! Convert SAM t and r to tabs, qv, qc, qi used by CAM
@@ -638,7 +638,7 @@ contains
         ! This code is adapted from cloud.f90 in SAM
         do k = 1, nz
         do i = 1, ncol
-        
+
             ! Enforce r >= 0.0
             r_temp=max(0.,r(i,k))
 
@@ -648,10 +648,10 @@ contains
 
             ! Set saturation vapour based on cloud type
             ! Warm cloud:
-            if(tabs1.ge.tbgmax) then
+            if(tabs1 >= tbgmax) then
                 rsat = rsatw(tabs1,pres(k))
             ! Ice cloud:
-            elseif(tabs1.le.tbgmin) then
+            elseif(tabs1 <= tbgmin) then
                 rsat = rsati(tabs1,pres(k))
             ! Mixed-phase cloud:
             else
@@ -660,19 +660,19 @@ contains
             endif
 
             !  Test if condensation is possible (humidity is above saturation) and iterate:
-            if(r_temp .gt. rsat) then
+            if(r_temp > rsat) then
                 niter=0
                 dtabs = 100.
-                do while(abs(dtabs).gt.0.01.and.niter.lt.10)
+                do while(abs(dtabs) > 0.01 .and. niter < 10)
                     ! Warm cloud regime
-                    if(tabs1.ge.tbgmax) then
+                    if(tabs1 >= tbgmax) then
                         om=1.
                         lstarn=fac_cond
                         dlstarn=0.
                         rsat=rsatw(tabs1,pres(k))
                         drsat=dtrsatw(tabs1,pres(k))
                     ! Ice cloud regime
-                    else if(tabs1.le.tbgmin) then
+                    else if(tabs1 <= tbgmin) then
                         om=0.
                         lstarn=fac_sub
                         dlstarn=0.
