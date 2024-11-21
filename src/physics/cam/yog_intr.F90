@@ -9,7 +9,7 @@ module yog_intr
 ! January 2024
 !---------------------------------------------------------------------------------
    use shr_kind_mod, only: r8=>shr_kind_r8
-   use physconst,    only: cpair                              
+   use physconst,    only: cpair
    use ppgrid,       only: pver, pcols, pverp, begchunk, endchunk
    use cam_abortutils,   only: endrun
    use physconst,        only: pi
@@ -17,7 +17,7 @@ module yog_intr
    use perf_mod
    use cam_logfile,  only: iulog
    use constituents, only: cnst_add
-   
+
    implicit none
    private
    save
@@ -42,15 +42,15 @@ contains
 
 ! There is currently no need for a yog_register as nothing to add to the physics buffer
 ! subroutine yog_register
-! 
+!
 ! !----------------------------------------
 ! ! Purpose: register fields with the physics buffer
 ! !----------------------------------------
-! 
+!
 !   use physics_buffer, only : pbuf_add_field, dtype_r8, dtype_i4
-! 
+!
 !   implicit none
-! 
+!
 ! end subroutine yog_register
 
 !=========================================================================================
@@ -103,11 +103,9 @@ subroutine yog_init()
 
   use cam_history,    only: addfld, add_default, horiz_only
   use nn_interface_CAM,   only: nn_convection_flux_CAM_init
-  
+
   use spmd_utils,     only: masterproc
   use phys_control,   only: phys_getopts
-
-  implicit none
 
   integer istat
   logical :: history_budget ! output tendencies and state variables for
@@ -154,8 +152,6 @@ subroutine yog_final()
 !----------------------------------------
 
   use nn_interface_CAM,   only: nn_convection_flux_CAM_finalize
-  
-  implicit none
 
   call nn_convection_flux_CAM_finalize()
 
@@ -209,13 +205,13 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
    ! Note that prec_dp is initialised in the physics buffer and zeroed for deep_scheme='off'
    prec_dp_idx     = pbuf_get_index('PREC_DP')
    call pbuf_get_field(pbuf, prec_dp_idx,     prec )
-   
+
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
    lq(:) = .true.
    call physics_ptend_init(ptend, state%psetcols, 'yogNN', ls=.true., lq=lq(:))! initialize ptend type for YOG
- 
+
    call nn_convection_flux_CAM(state%pmid(:,pver:1:-1), state%pint(:,pverp:1:-1), state%ps, &
                                state%t(:,pver:1:-1), state%q(:,pver:1:-1,1), &
                                state%q(:,pver:1:-1,ixcldliq), state%q(:,pver:1:-1,ixcldice), &
@@ -225,7 +221,7 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
                                yog_precsfc, &
                                ptend%q(:,pver:1:-1,ixcldice), ptend%q(:,pver:1:-1,1), &
                                ptend%q(:,pver:1:-1,ixcldliq), ptend%s(:,pver:1:-1))
- 
+
    ftem(:ncol,:pver) = ptend%s(:ncol,:pver)/cpair
    call outfld('YOGDT   ',ftem               ,pcols   ,lchnk   )
    call outfld('YOGDQ   ',ptend%q(1,1,1) ,pcols   ,lchnk   )

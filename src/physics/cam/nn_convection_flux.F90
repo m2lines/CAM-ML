@@ -89,7 +89,7 @@ contains
         != unit (J / kg) :: t
         real(8), intent(inout) :: t(:, :)
             !! Liquid Ice static energy (cp*T + g*z − L(qliq + qice) − Lf*qice)
-        
+
         != unit 1 :: q
         real(8), intent(inout) :: q(:, :)
             !! total water
@@ -100,15 +100,15 @@ contains
         != unit (kg / m**3) :: rho
         real(8), intent(in) :: rho(:)
             !! air density at pressure levels
-        
+
         ! != unit mb :: pres
         ! real(8), intent(in) pres(nzm)
         !     !! pressure,mb at scalar levels
-        
+
         != unit 1 :: adz
         real(8), intent(in) :: adz(:)
             !! ratio of the pressure level grid height spacing [m] to dz (lowest dz spacing)
-        
+
         ! ---------------------
         ! Single value parameters from model/grid
         ! ---------------------
@@ -138,8 +138,8 @@ contains
         ! Local Variables
         ! -----------------------------------
         integer  i, k, dim_counter, out_dim_counter
-        integer nx
-            !! Number of x points in a subdomain
+        integer ncol
+            !! Number of columns in a subdomain
         integer nzm
             !! Number of z points in a subdomain - 1
         ! real(8) :: omn
@@ -161,7 +161,7 @@ contains
         real(8),   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
                                   q_sed_flux, t_rad_rest_tend
 
-        nx = size(tabs_i, 1)
+        ncol = size(tabs_i, 1)
         nzm = size(tabs_i, 2)
 
         ! Check that we have initialised all of the variables.
@@ -174,7 +174,7 @@ contains
         end do
 
         ! The NN operates on atmospheric columns which have been flattened into 2D
-        do i=1,nx
+        do i=1,ncol
             ! Initialize variables
             features = 0.
             dim_counter = 0
@@ -250,21 +250,21 @@ contains
 
             ! total non-precip. water mix. ratio ice-sedimenting flux
             q_sed_flux(1:nrf) = outputs(out_dim_counter+1:out_dim_counter+nrf)
-            
+
             !-----------------------------------------------------
             ! Apply physical constraints and update q and t
 
             ! Non-precip. water content must be >= 0, so ensure advective fluxes
             ! will not reduce it below 0 anywhere
             do k=2,nrf
-                if (q_flux_adv(k).lt.0) then
+                if (q_flux_adv(k) < 0) then
                     ! If flux is negative ensure we don't lose more than is already present
-                    if ( q(i,k).lt.-q_flux_adv(k)* irhoadzdz(k)) then
+                    if ( q(i,k) < -q_flux_adv(k)* irhoadzdz(k)) then
                         q_flux_adv(k) = -q(i,k)/irhoadzdz(k)
                     end if
                 else
                     ! If flux is positive ensure we don't gain more than is in the box below
-                    if (q(i,k-1).lt.q_flux_adv(k)* irhoadzdz(k)) then
+                    if (q(i,k-1) < q_flux_adv(k)* irhoadzdz(k)) then
                         q_flux_adv(k) = q(i,k-1)/irhoadzdz(k)
                     end if
                 end if
@@ -280,7 +280,7 @@ contains
             q_delta_adv(i,nrf) = - (0.0 - q_flux_adv(nrf)) * irhoadzdz(nrf)
             ! q must be >= 0 so ensure delta won't reduce it below zero
             do k=1,nrf
-                if (q(i,k) .lt. -q_delta_adv(i,k)) then
+                if (q(i,k) < -q_delta_adv(i,k)) then
                     q_delta_adv(i,k) = -q(i,k)
                 end if
             end do
@@ -293,7 +293,7 @@ contains
             do k=1,nrf
                 omp(k) = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
                 fac(k) = (fac_cond + fac_fus * (1.0 - omp(k)))
-                if (q_tend_auto(k).lt.0) then
+                if (q_tend_auto(k) < 0) then
                     q_delta_auto(i,k) = - min(-q_tend_auto(k) * dtn, q(i,k))
                 else
                     q_delta_auto(i,k) = q_tend_auto(k) * dtn
@@ -307,14 +307,14 @@ contains
 
             ! Ensure sedimenting ice will not reduce q below zero anywhere
             do k=2,nrf
-                if (q_sed_flux(k).lt.0) then
+                if (q_sed_flux(k) < 0) then
                     ! If flux is negative ensure we don't lose more than is already present
-                    if ( q(i,k).lt.-q_sed_flux(k)* irhoadzdz(k)) then
+                    if ( q(i,k) < -q_sed_flux(k)* irhoadzdz(k)) then
                         q_sed_flux(k) = -q(i,k)/irhoadzdz(k)
                     end if
                 else
                     ! If flux is positive ensure we don't gain more than is in the box below
-                    if (q(i,k-1).lt.q_sed_flux(k)* irhoadzdz(k)) then
+                    if (q(i,k-1) < q_sed_flux(k)* irhoadzdz(k)) then
                         q_sed_flux(k) = q(i,k-1)/irhoadzdz(k)
                     end if
                 end if
@@ -328,7 +328,7 @@ contains
             q_delta_sed(i,nrf) = - (0.0 - q_sed_flux(nrf)) * irhoadzdz(nrf)
             ! q must be >= 0 so ensure delta won't reduce it below zero
             do k=1,nrf
-                if (q_delta_sed(i,k).lt.0) then
+                if (q_delta_sed(i,k) < 0) then
                     q_delta_sed(i,k) = min(-q_delta_sed(i,k), q(i,k))
                     q_delta_sed(i,k) = -q_delta_sed(i,k)
                 end if
@@ -350,7 +350,7 @@ contains
                 precsfc(i) = precsfc(i) - q_delta_auto(i,k) * rho(k) * adz(k)
             end do
             precsfc(i) = precsfc(i) * dz
-            
+
             ! As a final check enforce q must be >= 0.0
             do k = 1,nrf
                 q(i,k) = max(0.,q(i,k))
@@ -369,9 +369,9 @@ contains
 
     end subroutine nn_convection_flux_finalize
 
-    
+
     !-----------------------------------------------------------------
-    
+
     subroutine error_mesg (message)
       character(len=*), intent(in) :: message
           !! message to be written to output   (character string)
@@ -398,9 +398,8 @@ contains
 
     != unit mb :: esatw
     real(8) function esatw(t)
-      implicit none
       != unit K :: t
-      real(8) :: t  ! temperature (K)
+      real(8), intent(in) :: t  ! temperature (K)
 
       != unit :: a0
       != unit :: mb / k :: a1, a2, a3, a4, a5, a6, a7, a8
@@ -422,9 +421,8 @@ contains
 
     != unit 1 :: rsatw
     real(8) function rsatw(t,p)
-      implicit none
       != unit K :: t
-      real(8) :: t  ! temperature
+      real(8), intent(in) :: t  ! temperature
 
       != unit mb :: p, esat
       real(8) :: p  ! pressure
@@ -436,8 +434,7 @@ contains
 
 
     real(8) function dtesatw(t)
-      implicit none
-      real(8) :: t  ! temperature (K)
+      real(8), intent(in) :: t  ! temperature (K)
       real(8) :: a0,a1,a2,a3,a4,a5,a6,a7,a8
       data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
                 0.443956472, 0.285976452e-1, 0.794747212e-3, &
@@ -450,17 +447,15 @@ contains
 
 
     real(8) function dtrsatw(t,p)
-      implicit none
-      real(8) :: t  ! temperature (K)
-      real(8) :: p  ! pressure    (mb)
+      real(8), intent(in) :: t  ! temperature (K)
+      real(8), intent(in) :: p  ! pressure    (mb)
       dtrsatw=0.622*dtesatw(t)/p
     end function dtrsatw
 
 
     real(8) function esati(t)
-      implicit none
       != unit K :: t
-      real(8) :: t  ! temperature
+      real(8), intent(in) :: t  ! temperature
       real(8) :: a0,a1,a2,a3,a4,a5,a6,a7,a8
       data a0,a1,a2,a3,a4,a5,a6,a7,a8 /&
               6.11147274, 0.503160820, 0.188439774e-1, &
@@ -474,12 +469,11 @@ contains
 
     != unit 1 :: rsati
     real(8) function rsati(t,p)
-      implicit none
       != unit t :: K
-      real(8) :: t  ! temperature
+      real(8), intent(in) :: t  ! temperature
 
       != unit mb :: p
-      real(8) :: p  ! pressure
+      real(8), intent(in) :: p  ! pressure
 
       != unit mb :: esat
       real(8) :: esat
@@ -489,8 +483,7 @@ contains
 
 
     real(8) function dtesati(t)
-      implicit none
-      real(8) :: t  ! temperature (K)
+      real(8), intent(in) :: t  ! temperature (K)
       real(8) :: a0,a1,a2,a3,a4,a5,a6,a7,a8
       data a0,a1,a2,a3,a4,a5,a6,a7,a8 / &
               0.503223089, 0.377174432e-1,0.126710138e-2, &
@@ -504,9 +497,8 @@ contains
 
 
     real(8) function dtrsati(t,p)
-      implicit none
-      real(8) :: t  ! temperature (K)
-      real(8) :: p  ! pressure    (mb)
+      real(8), intent(in) :: t  ! temperature (K)
+      real(8), intent(in) :: p  ! pressure    (mb)
       dtrsati = 0.622 * dtesati(t) / p
     end function dtrsati
 

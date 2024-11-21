@@ -70,14 +70,14 @@ contains
 
     !-----------------------------------------------------------------
     ! Public Subroutines
-    
+
     subroutine relu(logits)
         !! Applies ReLU to a vector.
 
          real(4), dimension(:), intent(inout)   :: logits
              !! vector to which ReLU will be applied
 
-         where (logits .lt. 0.0)  logits = 0.0
+         where (logits < 0.0)  logits = 0.0
 
     end subroutine relu
 
@@ -85,7 +85,7 @@ contains
     subroutine net_forward(features, logits)
         !! Run forward method of the Neural Net.
 
-        real(4), dimension(:) :: features
+        real(4), dimension(:), intent(inout) :: features
             !! Vector of input features
         real(4), dimension(:), intent(out)  :: logits
             !! Output vector
