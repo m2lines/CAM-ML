@@ -1976,7 +1976,7 @@ contains
         call t_stopf('yog_nn')
 
         flx_cnd(:ncol) = prec_dp(:ncol)
-        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, flx_cnd, zero, flx_heat)
+        call check_energy_chng(state, tend, "yog_nn", nstep, ztodt, zero, flx_cnd, zero, flx_heat)
     end if
 
     !
