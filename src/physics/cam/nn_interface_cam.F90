@@ -15,6 +15,7 @@ use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           omegan, check
 use physconst, only: gravit
 use ppgrid, only: pcols, pver, begchunk, endchunk
+use cam_logfile, only: iulog
 
 implicit none
 private
@@ -82,7 +83,7 @@ contains
         real(8), intent(in) :: qv(:,:), qc(:,:), qi(:, :)
         real(8), intent(out) :: se(:)       ! sum energy
         real(8), intent(out) :: sw(:)       ! sum water
-        real(8) wv(:), wl(:), wi(:)
+        real(8) ::  wv(pver, ncol), wl(pver, ncol), wi(pver, ncol)
 
         integer, intent(in) :: lchnk                 ! chunk identifier
         integer, intent(in) :: ncol                  ! number of atmospheric columns
@@ -90,7 +91,7 @@ contains
 
         do k = 1, pver
           do i = 1, ncol
-            se(i) = se(i) + t(i,k)*cpairv_loc(i,k,lchnk)*pdel/gravit
+            se(i) = se(i) + t(i,k)*cpair_v_loc(i,k,lchnk)*pdel/gravit
             wv(i) = wv(i) + qv(i,k)                    *pdel/gravit
             wl(i) = wl(i) + qc(i,k)                    *pdel/gravit
             wi(i) = wi(i) + qi(i,k)                    *pdel/gravit
@@ -160,7 +161,7 @@ contains
 
         !-----------------------------------------------------
 
-        yog_conservation_check(cp_cam, pdel, tabs_cam, qv_cam, qc_cam, qi_cam, se, &
+        call yog_conservation_check(cp_cam, pdel, tabs_cam, qv_cam, qc_cam, qi_cam, se, &
             sw, begchnk, nx, nz)
 
         !-----------------------------------------------------
