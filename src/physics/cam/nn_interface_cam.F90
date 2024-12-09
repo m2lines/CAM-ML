@@ -83,14 +83,19 @@ contains
         real(8), intent(in) :: qv(:,:), qc(:,:), qi(:, :)
         real(8), intent(out) :: se(:)       ! sum energy
         real(8), intent(out) :: sw(:)       ! sum water
-        real(8) ::  wv(pver, ncol), wl(pver, ncol), wi(pver, ncol)
+        real(8) ::  wv(ncol), wl(ncol), wi(ncol)
 
         integer, intent(in) :: lchnk                 ! chunk identifier
         integer, intent(in) :: ncol                  ! number of atmospheric columns
         integer  i,k                                 ! column, level indices
 
-        do k = 1, pver
-          do i = 1, ncol
+        do i = 1, ncol
+          se(i) = 0
+          wv(i) = 0
+          wl(i) = 0
+          wi(i) = 0
+          sw(i) = 0
+          do k = 1, pver
             se(i) = se(i) + t(i,k)*cpair_v_loc(i,k,lchnk)*pdel/gravit
             wv(i) = wv(i) + qv(i,k)                    *pdel/gravit
             wl(i) = wl(i) + qc(i,k)                    *pdel/gravit
@@ -160,7 +165,7 @@ contains
         !-----------------------------------------------------
 
         call yog_conservation_check(cp_cam, pdel, tabs_cam, qv_cam, qc_cam, qi_cam, se, &
-            sw, begchnk, nx, nz)
+            sw, begchnk, nx)
 
         !-----------------------------------------------------
         
