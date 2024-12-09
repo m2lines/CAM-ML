@@ -74,16 +74,16 @@ contains
 
     end subroutine nn_convection_flux_CAM_init
 
-    subroutine yog_conservation_check(cpair_v_loc, pdel, t, qv, qc, qi, se, & 
-            sw, lchnk, ncol)
+    subroutine yog_conservation_check(cpair_v_loc, pdel, t, qv, qc, qi, & 
+            lchnk, ncol)
 
         real(8), intent(in) :: cpair_v_loc(:,:,:) ! heat capacity
         real(8), intent(in) :: pdel
         real(8), intent(in) :: t(:,:)
         real(8), intent(in) :: qv(:,:), qc(:,:), qi(:, :)
-        real(8), intent(out) :: se(:)       ! sum energy
-        real(8), intent(out) :: sw(:)       ! sum water
-        real(8) ::  wv(ncol), wl(ncol), wi(ncol)
+        real(8) :: se(ncol)       ! sum energy
+        real(8) :: sw(ncol)       ! sum water
+        real(8) :: wv(ncol), wl(ncol), wi(ncol)
 
         integer, intent(in) :: lchnk                 ! chunk identifier
         integer, intent(in) :: ncol                  ! number of atmospheric columns
@@ -166,8 +166,8 @@ contains
 
         !-----------------------------------------------------
 
-        call yog_conservation_check(cp_cam, pdel, tabs_cam, qv_cam, qc_cam, qi_cam, se, &
-            sw, begchnk, nx)
+        call yog_conservation_check(cp_cam, pres_sfc_cam, tabs_cam, qv_cam, qc_cam, qi_cam, &
+             begchnk, nx)
 
         !-----------------------------------------------------
         
