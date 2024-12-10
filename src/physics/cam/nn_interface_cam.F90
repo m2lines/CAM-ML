@@ -13,7 +13,7 @@ use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
                           a_bg, a_pr, an, bn, ap, bp, &
                           omegan, check
-use physconst, only: gravit
+use physconst, only: gravit, cpairv
 use ppgrid, only: pcols, pver, begchunk, endchunk
 use cam_logfile, only: iulog
 
@@ -74,18 +74,17 @@ contains
 
     end subroutine nn_convection_flux_CAM_init
 
-    subroutine yog_conservation_check(cpair_v_loc, pdel, t, qv, qc, qi, & 
-            lchnk, ncol)
+    subroutine yog_conservation_check(pdel, t, qv, qc, qi, & 
+            ncol)
 
-        real(8), intent(in) :: cpair_v_loc(:,:,:) ! heat capacity
-        real(8), intent(in) :: pdel
+        real(8), intent(in) :: pdel(:,:)
         real(8), intent(in) :: t(:,:)
         real(8), intent(in) :: qv(:,:), qc(:,:), qi(:, :)
         real(8) :: se(ncol)       ! sum energy
         real(8) :: sw(ncol)       ! sum water
         real(8) :: wv(ncol), wl(ncol), wi(ncol)
 
-        integer, intent(in) :: lchnk                 ! chunk identifier
+!        integer, intent(in) :: lchnk                 ! chunk identifier
         integer, intent(in) :: ncol                  ! number of atmospheric columns
         integer  i,k                                 ! column, level indices
 
@@ -96,10 +95,10 @@ contains
           wi(i) = 0
           sw(i) = 0
           do k = 1, pver
-            se(i) = se(i) + t(i,k)*cpair_v_loc(i,k,lchnk)*pdel/gravit
-            wv(i) = wv(i) + qv(i,k)                    *pdel/gravit
-            wl(i) = wl(i) + qc(i,k)                    *pdel/gravit
-            wi(i) = wi(i) + qi(i,k)                    *pdel/gravit
+            se(i) = se(i) + t(i,k) *cpairv*pdel(i,k)/gravit
+            wv(i) = wv(i) + qv(i,k)       *pdel(i,k)/gravit
+            wl(i) = wl(i) + qc(i,k)       *pdel(i,k)/gravit
+            wi(i) = wi(i) + qi(i,k)       *pdel(i,k)/gravit
             sw(i) = wv(i) + wl(i) + wi(i)
           end do
         end do
@@ -164,8 +163,7 @@ contains
 
         !-----------------------------------------------------
 
-        call yog_conservation_check(cp_cam, pres_sfc_cam, tabs_cam, qv_cam, qc_cam, qi_cam, &
-             begchnk, nx)
+        call yog_conservation_check(pres_sfc_cam, tabs_cam, qv_cam, qc_cam, qi_cam, nx)
 
         !-----------------------------------------------------
         
