@@ -220,7 +220,7 @@ contains
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
         ! sedimentation (dt = -dq*(latent_heat/cp)),
         ! radiation rest tendency (multiply by dtn to get dt)
-        call nn_convection_flux(tabs0_sam(:,1:nrf), q0_sam(:,1:nrf), &
+        call nn_convection_flux(tabs0_sam(:,1:nrf), r0_sam(:,1:nrf), &
                                 tabs_sam(:,1:nrf), &
                                 t_sam(:,1:nrf), r_sam(:,1:nrf), &
                                 rho, adz, dz, dtn, &
