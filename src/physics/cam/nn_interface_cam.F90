@@ -671,7 +671,7 @@ contains
             !! normalised liquid ice static energy
 
         ! Intermediate variables
-        real(8) :: rsat, om, omn, dtabs, drsat, lstarn, dlstarn, fff, dfff, rv, r_temp
+        real(8) :: rsat, om, omn, dtabs, drsat, lstarn, dlstarn, fff, dfff, rn, rv, r_temp
 
         nx = size(tabs, 1)
         nz = size(tabs, 2)
