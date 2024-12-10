@@ -186,9 +186,7 @@ contains
         end where
         call extrapolate_to_surface(pres_cam(1:ncol, :), qv_cam(1:ncol, :), pres_sfc_cam(1:ncol), qv_surf)
         where (qv_surf>=0)
-            qv_surf = qv_sur(cpair_v_loc, pdel, gravit, t, qv, qc, qi, se, &
-            sw, lchnk, ncol, pver)
-
+            qv_surf = qv_surf
         elsewhere
             qv_surf = 0
         end where
