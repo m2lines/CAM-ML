@@ -163,7 +163,7 @@ contains
 
         !-----------------------------------------------------
 
-        call yog_conservation_check(pres_sfc_cam, tabs_cam, qv_cam, qc_cam, qi_cam, nx)
+        call yog_conservation_check(pres_cam, tabs_cam, qv_cam, qc_cam, qi_cam, nx)
 
         !-----------------------------------------------------
         
