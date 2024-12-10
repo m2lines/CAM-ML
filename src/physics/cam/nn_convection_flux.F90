@@ -421,10 +421,6 @@ contains
 
     != unit 1 :: rsatw
     real(8) function rsatw(t,p)
-<<<<<<< HEAD
-      implicit none
-=======
->>>>>>> origin/CAM-ML
       != unit K :: t
       real(8), intent(in) :: t  ! temperature
 
@@ -451,14 +447,8 @@ contains
 
 
     real(8) function dtrsatw(t,p)
-<<<<<<< HEAD
-      implicit none
-      real(8) :: t  ! temperature (K)
-      real(8) :: p  ! pressure    (mb)
-=======
       real(8), intent(in) :: t  ! temperature (K)
       real(8), intent(in) :: p  ! pressure    (mb)
->>>>>>> origin/CAM-ML
       dtrsatw=0.622*dtesatw(t)/p
     end function dtrsatw
 
@@ -479,10 +469,6 @@ contains
 
     != unit 1 :: rsati
     real(8) function rsati(t,p)
-<<<<<<< HEAD
-      implicit none
-=======
->>>>>>> origin/CAM-ML
       != unit t :: K
       real(8), intent(in) :: t  ! temperature
 
@@ -511,14 +497,8 @@ contains
 
 
     real(8) function dtrsati(t,p)
-<<<<<<< HEAD
-      implicit none
-      real(8) :: t  ! temperature (K)
-      real(8) :: p  ! pressure    (mb)
-=======
       real(8), intent(in) :: t  ! temperature (K)
       real(8), intent(in) :: p  ! pressure    (mb)
->>>>>>> origin/CAM-ML
       dtrsati = 0.622 * dtesati(t) / p
     end function dtrsati
 
