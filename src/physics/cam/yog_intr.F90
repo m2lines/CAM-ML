@@ -198,7 +198,7 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
    ! physics buffer fields
    real(r8), pointer, dimension(:)   :: prec         ! total precipitation
 
-   real(r8) :: yog_precsfc(ncols)  ! scattered precip flux at each level
+   real(r8) :: yog_precsfc(ncol)  ! scattered precip flux at each level
 
    lchnk = state%lchnk
    ncol  = state%ncol
