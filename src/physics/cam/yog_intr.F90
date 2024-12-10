@@ -201,6 +201,9 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
    lchnk = state%lchnk
    ncol  = state%ncol
 
+   real(r8) :: yog_precsfc(ncol)  ! scattered precip flux at each level
+
+
    ! fetch prec_dp from the physics buffer
    ! Note that prec_dp is initialised in the physics buffer and zeroed for deep_scheme='off'
    prec_dp_idx     = pbuf_get_index('PREC_DP')
