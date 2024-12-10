@@ -95,10 +95,10 @@ contains
           wi(i) = 0
           sw(i) = 0
           do k = 1, pver
-            se(i) = se(i) + t(i,k) *cpairv*pdel(i,k)/gravit
-            wv(i) = wv(i) + qv(i,k)       *pdel(i,k)/gravit
-            wl(i) = wl(i) + qc(i,k)       *pdel(i,k)/gravit
-            wi(i) = wi(i) + qi(i,k)       *pdel(i,k)/gravit
+            se(i) = se(i) + t(i,k) *cpairv(i, k, begchunk)*pdel(i,k)/gravit
+            wv(i) = wv(i) + qv(i,k)                       *pdel(i,k)/gravit
+            wl(i) = wl(i) + qc(i,k)                       *pdel(i,k)/gravit
+            wi(i) = wi(i) + qi(i,k)                       *pdel(i,k)/gravit
             sw(i) = wv(i) + wl(i) + wi(i)
           end do
         end do
