@@ -13,6 +13,9 @@ use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
                           a_bg, a_pr, an, bn, ap, bp, &
                           omegan, check
+use physconst, only: gravit, cpairv
+use ppgrid, only: pcols, pver, begchunk, endchunk
+use cam_logfile, only: iulog
 
 implicit none
 private
@@ -20,7 +23,7 @@ private
 
 !---------------------------------------------------------------------
 ! public interfaces
-public  nn_convection_flux_CAM, &
+public  nn_convection_flux_CAM, yog_conservation_check, &
         nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize
 
 ! Make these routines public for purposes of testing,
@@ -71,6 +74,39 @@ contains
 
     end subroutine nn_convection_flux_CAM_init
 
+    subroutine yog_conservation_check(pdel, t, qv, qc, qi, & 
+            ncol)
+
+        real(8), intent(in) :: pdel(:,:)
+        real(8), intent(in) :: t(:,:)
+        real(8), intent(in) :: qv(:,:), qc(:,:), qi(:, :)
+        real(8) :: se(ncol)       ! sum energy
+        real(8) :: sw(ncol)       ! sum water
+        real(8) :: wv(ncol), wl(ncol), wi(ncol)
+
+!        integer, intent(in) :: lchnk                 ! chunk identifier
+        integer, intent(in) :: ncol                  ! number of atmospheric columns
+        integer  i,k                                 ! column, level indices
+
+        do i = 1, ncol
+          se(i) = 0
+          wv(i) = 0
+          wl(i) = 0
+          wi(i) = 0
+          sw(i) = 0
+          do k = 1, pver
+            se(i) = se(i) + t(i,k) *cpairv(i, k, begchunk)*pdel(i,k)/gravit
+            wv(i) = wv(i) + qv(i,k)                       *pdel(i,k)/gravit
+            wl(i) = wl(i) + qc(i,k)                       *pdel(i,k)/gravit
+            wi(i) = wi(i) + qi(i,k)                       *pdel(i,k)/gravit
+            sw(i) = wv(i) + wl(i) + wi(i)
+          end do
+        end do
+
+        write(iulog, *), "Energy sum: ", se
+        write(iulog, *), "Water sum: ", sw
+
+    end subroutine yog_conservation_check
 
     subroutine nn_convection_flux_CAM(pres_cam, pres_int_cam, pres_sfc_cam, &
                                       tabs_cam, qv_cam, qc_cam, qi_cam, &
@@ -126,7 +162,8 @@ contains
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         precsfc(:)=0.
-
+        !-----------------------------------------------------
+        call yog_conservation_check(pres_cam, tabs_cam, qv_cam, qc_cam, qi_cam, ncol)
         !-----------------------------------------------------
 
         ! Interpolate CAM variables to the SAM pressure levels
