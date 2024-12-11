@@ -196,13 +196,10 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
    ! physics buffer fields
    real(r8), pointer, dimension(:)   :: prec         ! total precipitation
 
-   real(r8) :: yog_precsfc(pcols)  ! scattered precip flux at each level
-
+   real(r8) :: yog_precsfc(state%ncol)  ! scattered precip flux at each level
+   
    lchnk = state%lchnk
    ncol  = state%ncol
-
-   real(r8) :: yog_precsfc(ncol)  ! scattered precip flux at each level
-
 
    ! fetch prec_dp from the physics buffer
    ! Note that prec_dp is initialised in the physics buffer and zeroed for deep_scheme='off'
