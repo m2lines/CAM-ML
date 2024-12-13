@@ -80,6 +80,7 @@ contains
         real(8), intent(in) :: pdel(:,:)
         real(8), intent(in) :: t(:,:)
         real(8), intent(in) :: qv(:,:), qc(:,:), qi(:, :)
+        real(8) :: pdel_c(ncol, pver-1)
         real(8) :: se(ncol)       ! sum energy
         real(8) :: sw(ncol)       ! sum water
         real(8) :: wv(ncol), wl(ncol), wi(ncol)
@@ -94,7 +95,7 @@ contains
         wi = 0.0
         sw = 0.0
 
-        pdel_c = pdel(:, pver-1) - pdel(:, 2:pver)
+        pdel_c = pdel(:, :pver-1) - pdel(:, 2:pver)
 
         do i = 1, ncol
           do k = 1, pver-1
