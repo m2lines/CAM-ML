@@ -13,7 +13,7 @@ use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
                           a_bg, a_pr, an, bn, ap, bp, &
                           omegan, check
-use physconst, only: gravit, cpairv
+use physconst, only: gravit, cpairv, cpair
 use ppgrid, only: pcols, pver, begchunk, endchunk
 use cam_logfile, only: iulog
 
@@ -88,17 +88,20 @@ contains
         integer, intent(in) :: ncol                  ! number of atmospheric columns
         integer  i,k                                 ! column, level indices
 
+        se = 0.0
+        wv = 0.0
+        wl = 0.0
+        wi = 0.0
+        sw = 0.0
+
+        pdel_c = pdel(:, pver-1) - pdel(:, 2:pver)
+
         do i = 1, ncol
-          se(i) = 0
-          wv(i) = 0
-          wl(i) = 0
-          wi(i) = 0
-          sw(i) = 0
-          do k = 1, pver
-            se(i) = se(i) + t(i,k) *cpairv(i, k, begchunk)*pdel(i,k)/gravit
-            wv(i) = wv(i) + qv(i,k)                       *pdel(i,k)/gravit
-            wl(i) = wl(i) + qc(i,k)                       *pdel(i,k)/gravit
-            wi(i) = wi(i) + qi(i,k)                       *pdel(i,k)/gravit
+          do k = 1, pver-1
+            se(i) = se(i) + t(i,k) *cpair*pdel_c(i,k)/gravit
+            wv(i) = wv(i) + qv(i,k)      *pdel_c(i,k)/gravit
+            wl(i) = wl(i) + qc(i,k)      *pdel_c(i,k)/gravit
+            wi(i) = wi(i) + qi(i,k)      *pdel_c(i,k)/gravit
             sw(i) = wv(i) + wl(i) + wi(i)
           end do
         end do
@@ -163,7 +166,8 @@ contains
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         precsfc(:)=0.
         !-----------------------------------------------------
-        call yog_conservation_check(pres_cam, tabs_cam, qv_cam, qc_cam, qi_cam, ncol)
+        write(iulog, *), "Before conversion:"
+        call yog_conservation_check(pres_int_cam, tabs_cam, qv_cam, qc_cam, qi_cam, ncol)
         !-----------------------------------------------------
 
         ! Interpolate CAM variables to the SAM pressure levels
@@ -234,6 +238,9 @@ contains
         ! Convert precipitation from kg/m^2 to m by dividing by density (1000)
         precsfc = precsfc * 1.0D-3
 
+        !-----------------------------------------------------
+        write(iulog, *), "After conversion:"
+        call yog_conservation_check(presi, tabs_sam, qv_sam, qc_sam, qi_sam, ncol)
         !-----------------------------------------------------
 
         ! Convert back into CAM variable tendencies (diff div by dtn) on SAM grid
