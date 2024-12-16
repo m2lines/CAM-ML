@@ -241,7 +241,8 @@ contains
 
         !-----------------------------------------------------
         write(iulog, *), "After conversion:"
-        call yog_conservation_check(presi, tabs_sam, qv_sam, qc_sam, qi_sam, ncol)
+        !!presi has just one dimension
+        !!call yog_conservation_check(presi, tabs_sam, qv_sam, qc_sam, qi_sam, ncol)
         !-----------------------------------------------------
 
         ! Convert back into CAM variable tendencies (diff div by dtn) on SAM grid
