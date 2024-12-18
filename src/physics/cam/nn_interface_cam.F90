@@ -75,18 +75,19 @@ contains
     end subroutine nn_convection_flux_CAM_init
 
     subroutine yog_conservation_check(p_int, t, qv, qc, qi, & 
-            ncol)
+            ncol, nver)
 
         real(8), intent(in) :: p_int(:,:)
         real(8), intent(in) :: t(:,:)
         real(8), intent(in) :: qv(:,:), qc(:,:), qi(:, :)
-        real(8) :: pdel(ncol, pver-1)
+        real(8) :: pdel(ncol, nver-1)
         real(8) :: se(ncol)       ! sum energy
         real(8) :: sw(ncol)       ! sum water
         real(8) :: wv(ncol), wl(ncol), wi(ncol)
 
 !        integer, intent(in) :: lchnk                 ! chunk identifier
         integer, intent(in) :: ncol                  ! number of atmospheric columns
+        integer, intent(in) :: nver                  ! number of vertical levels
         integer  i,k                                 ! column, level indices
 
         se = 0.0
@@ -95,10 +96,10 @@ contains
         wi = 0.0
         sw = 0.0
 
-        pdel = p_int(:, :pver-1) - p_int(:, 2:pver)
+        pdel = p_int(:, :nver-1) - p_int(:, 2:nver)
 
         do i = 1, ncol
-          do k = 1, pver-1
+          do k = 1, nver-1
             se(i) = se(i) + t(i,k) *cpair*pdel(i,k)/gravit
             wv(i) = wv(i) + qv(i,k)      *pdel(i,k)/gravit
             wl(i) = wl(i) + qc(i,k)      *pdel(i,k)/gravit
@@ -170,7 +171,7 @@ contains
         precsfc(:)=0.
         !-----------------------------------------------------
         write(iulog, *), "Before conversion:"
-        call yog_conservation_check(pres_int_cam, tabs_cam, qv_cam, qc_cam, qi_cam, ncol)
+        call yog_conservation_check(pres_int_cam, tabs_cam, qv_cam, qc_cam, qi_cam, ncol, pver)
         !-----------------------------------------------------
 
         ! Interpolate CAM variables to the SAM pressure levels
@@ -248,7 +249,7 @@ contains
                 presi_col(i, :) = presi(:)
         end do
         
-        call yog_conservation_check(presi_col, tabs_sam, qv_sam, qc_sam, qi_sam, ncol)
+        call yog_conservation_check(presi_col, tabs_sam, qv_sam, qc_sam, qi_sam, ncol, nz_sam)
         !-----------------------------------------------------
 
         ! Convert back into CAM variable tendencies (diff div by dtn) on SAM grid
