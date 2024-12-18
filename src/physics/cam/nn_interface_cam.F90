@@ -74,13 +74,13 @@ contains
 
     end subroutine nn_convection_flux_CAM_init
 
-    subroutine yog_conservation_check(pdel, t, qv, qc, qi, & 
+    subroutine yog_conservation_check(p_int, t, qv, qc, qi, & 
             ncol)
 
-        real(8), intent(in) :: pdel(:,:)
+        real(8), intent(in) :: p_int(:,:)
         real(8), intent(in) :: t(:,:)
         real(8), intent(in) :: qv(:,:), qc(:,:), qi(:, :)
-        real(8) :: pdel_c(ncol, pver-1)
+        real(8) :: pdel(ncol, pver-1)
         real(8) :: se(ncol)       ! sum energy
         real(8) :: sw(ncol)       ! sum water
         real(8) :: wv(ncol), wl(ncol), wi(ncol)
@@ -95,14 +95,14 @@ contains
         wi = 0.0
         sw = 0.0
 
-        pdel_c = pdel(:, :pver-1) - pdel(:, 2:pver)
+        pdel = p_int(:, :pver-1) - p_int(:, 2:pver)
 
         do i = 1, ncol
           do k = 1, pver-1
-            se(i) = se(i) + t(i,k) *cpair*pdel_c(i,k)/gravit
-            wv(i) = wv(i) + qv(i,k)      *pdel_c(i,k)/gravit
-            wl(i) = wl(i) + qc(i,k)      *pdel_c(i,k)/gravit
-            wi(i) = wi(i) + qi(i,k)      *pdel_c(i,k)/gravit
+            se(i) = se(i) + t(i,k) *cpair*pdel(i,k)/gravit
+            wv(i) = wv(i) + qv(i,k)      *pdel(i,k)/gravit
+            wl(i) = wl(i) + qc(i,k)      *pdel(i,k)/gravit
+            wi(i) = wi(i) + qi(i,k)      *pdel(i,k)/gravit
             sw(i) = wv(i) + wl(i) + wi(i)
           end do
         end do
@@ -161,6 +161,8 @@ contains
             !! Distance of column from equator (proxy for insolation and sfc albedo)
         real(8), dimension(ncol)      :: precsfc_i
             !! precipitation at surface from one call to parameterisation
+        real(8) :: presi_col(ncol, n_sam_lev)
+            !! presi repeated ncol times along one dimension, for energy and water checker    
 
         integer :: k
 
@@ -241,8 +243,12 @@ contains
 
         !-----------------------------------------------------
         write(iulog, *), "After conversion:"
-        !!presi has just one dimension
-        !!call yog_conservation_check(presi, tabs_sam, qv_sam, qc_sam, qi_sam, ncol)
+        !!presi has just one dimension, so we need to repeat it ncol times to get the required input for the checker
+        do i = 1, ncol
+                presi_col(i, :) = presi(:)
+        end do
+        
+        call yog_conservation_check(presi_col, tabs_sam, qv_sam, qc_sam, qi_sam, ncol)
         !-----------------------------------------------------
 
         ! Convert back into CAM variable tendencies (diff div by dtn) on SAM grid
