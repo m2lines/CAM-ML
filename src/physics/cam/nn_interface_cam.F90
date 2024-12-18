@@ -161,10 +161,10 @@ contains
             !! Distance of column from equator (proxy for insolation and sfc albedo)
         real(8), dimension(ncol)      :: precsfc_i
             !! precipitation at surface from one call to parameterisation
-        real(8) :: presi_col(ncol, n_sam_lev)
+        real(8) :: presi_col(ncol, nz_sam)
             !! presi repeated ncol times along one dimension, for energy and water checker    
 
-        integer :: k
+        integer :: i,k
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         precsfc(:)=0.
