@@ -249,7 +249,7 @@ contains
                 presi_col(i, :) = presi(:)
         end do
         
-        call yog_conservation_check(presi_col, tabs_sam, qv_sam, qc_sam, qi_sam, ncol, nz_sam)
+        call yog_conservation_check(presi_col, tabs_sam, qv_sam, qc_sam, qi_sam, ncol, nrf)
         !-----------------------------------------------------
 
         ! Convert back into CAM variable tendencies (diff div by dtn) on SAM grid
