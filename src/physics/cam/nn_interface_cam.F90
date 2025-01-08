@@ -246,9 +246,10 @@ contains
 
         !-----------------------------------------------------
         write(iulog, *), "After conversion:"
-        !!presi has just one dimension, so we need to repeat it ncol times to get the required input for the checker
+        !!presi has just one dimension, so we need to repeat it ncol times to get the required input for the checker.
+        !!Also, convert from hPa to Pa
         do i = 1, ncol
-                presi_col(i, :) = presi(:)
+                presi_col(i, :) = presi(:)*100.0
         end do
         
         call yog_conservation_check(presi_col, tabs_sam, qv_sam, qc_sam, qi_sam, ncol, nrf)
