@@ -167,6 +167,14 @@ contains
         real(8) :: presi_col(ncol, nz_sam)
             !! presi repeated ncol times along one dimension, for energy and water checker    
 
+
+        ! Variables for the energy checker calculations at the end of the code
+        real(8), dimension(:,:), allocatable :: tabs_cam_out
+            !! absolute temperature [K] to the CAM model
+        real(8), dimension(:,:), allocatable :: qv_cam_out, qc_cam_out, qi_cam_out
+            !! moisture content [kg/kg] to the CAM model
+        integer :: ncol_chnk, nver_chnk
+
         integer :: i,k
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
@@ -245,7 +253,7 @@ contains
         precsfc = precsfc * 1.0D-3
 
         !-----------------------------------------------------
-        write(iulog, *), "After conversion:"
+        write(iulog, *), "After YOG NN:"
         !!presi has just one dimension, so we need to repeat it ncol times to get the required input for the checker.
         !!Also, convert from hPa to Pa
         do i = 1, ncol
@@ -273,6 +281,32 @@ contains
         call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), dqc_sam, dqc(1:ncol, :))
         call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), dqi_sam, dqi(1:ncol, :))
         call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), ds_sam,  ds(1:ncol, :))
+
+        !-----------------------------------------------------
+        ! For purposes of investigating energy conservation apply the tendencies on the
+        ! CAM grid to the CAM inputs, and apply the Marion conservation checker to see
+        ! if values are consistent with the inputs before the parameterisation.
+        ncol_chnk = size(tabs_cam, 1)
+        nver_chnk = size(tabs_cam, 2)
+        allocate(tabs_cam_out(ncol_chnk,nver_chnk))
+        allocate(qv_cam_out(ncol_chnk,nver_chnk))
+        allocate(qc_cam_out(ncol_chnk,nver_chnk))
+        allocate(qi_cam_out(ncol_chnk,nver_chnk))
+
+        tabs_cam_out = tabs_cam + dtn * ds / cp_cam
+        qv_cam_out = qv_cam + dtn * dqv
+        qc_cam_out = qc_cam + dtn * dqc
+        qi_cam_out = qi_cam + dtn * dqi
+
+        write(iulog, *), "After conversion back:"
+        call yog_conservation_check(pres_int_cam, tabs_cam_out, qv_cam_out, qc_cam_out, qi_cam_out, ncol, pver)
+
+        deallocate(tabs_cam_out)
+        deallocate(qv_cam_out)
+        deallocate(qc_cam_out)
+        deallocate(qi_cam_out)
+
+
 
     end subroutine nn_convection_flux_CAM
 
