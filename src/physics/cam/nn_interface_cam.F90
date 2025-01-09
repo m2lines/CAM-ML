@@ -74,7 +74,7 @@ contains
 
     end subroutine nn_convection_flux_CAM_init
 
-    subroutine yog_conservation_check(p_int, t, qv, qc, qi, & 
+    subroutine yog_conservation_check(p_int, t, qv, qc, qi, prec, &
             ncol, nver)
     ! Use this function to check the energy and water conversation by outputting the
     ! respective sums.  
@@ -82,6 +82,7 @@ contains
         real(8), intent(in) :: p_int(:,:)  ! pressure on grid
         real(8), intent(in) :: t(:,:) ! temperature
         real(8), intent(in) :: qv(:,:), qc(:,:), qi(:, :) ! moisture components: water vapor, cloud water, cloud ice
+        real(8), intent(in) :: prec(:)  !! precipitation that has come out of the column
         real(8) :: pdel(ncol, nver-1)  ! pressure in grid cell
         real(8) :: se(ncol)       ! sum of energy
         real(8) :: sw(ncol)       ! sum of water
@@ -112,6 +113,7 @@ contains
 
         write(iulog, *), "Energy sum: ", se
         write(iulog, *), "Water sum: ", sw
+        write(iulog, *), "Water + prec: ", sw + prec
 
     end subroutine yog_conservation_check
 
@@ -171,6 +173,8 @@ contains
         ! Variables for the energy checker calculations at the end of the code
         real(8), dimension(:,:), allocatable :: tabs_cam_out
             !! absolute temperature [K] to the CAM model
+        real(8), dimension(:), allocatable :: prec_cam_out
+            !! precipitation to the CAM model
         real(8), dimension(:,:), allocatable :: qv_cam_out, qc_cam_out, qi_cam_out
             !! moisture content [kg/kg] to the CAM model
         integer :: ncol_chnk, nver_chnk
@@ -181,7 +185,7 @@ contains
         precsfc(:)=0.
         !-----------------------------------------------------
         write(iulog, *), "Before conversion:"
-        call yog_conservation_check(pres_int_cam, tabs_cam, qv_cam, qc_cam, qi_cam, ncol, pver)
+        call yog_conservation_check(pres_int_cam, tabs_cam, qv_cam, qc_cam, qi_cam, precsfc,  ncol, pver)
         !-----------------------------------------------------
 
         ! Interpolate CAM variables to the SAM pressure levels
@@ -260,7 +264,7 @@ contains
                 presi_col(i, :) = presi(:)*100.0
         end do
         
-        call yog_conservation_check(presi_col, tabs_sam, qv_sam, qc_sam, qi_sam, ncol, nrf)
+        call yog_conservation_check(presi_col, tabs_sam, qv_sam, qc_sam, qi_sam, precsfc, ncol, nrf)
         !-----------------------------------------------------
 
         ! Convert back into CAM variable tendencies (diff div by dtn) on SAM grid
@@ -292,19 +296,22 @@ contains
         allocate(qv_cam_out(ncol_chnk,nver_chnk))
         allocate(qc_cam_out(ncol_chnk,nver_chnk))
         allocate(qi_cam_out(ncol_chnk,nver_chnk))
+        allocate(prec_cam_out(ncol_chnk))
 
         tabs_cam_out = tabs_cam + dtn * ds / cp_cam
         qv_cam_out = qv_cam + dtn * dqv
         qc_cam_out = qc_cam + dtn * dqc
         qi_cam_out = qi_cam + dtn * dqi
+        prec_cam_out = dtn * precsfc
 
         write(iulog, *), "After conversion back:"
-        call yog_conservation_check(pres_int_cam, tabs_cam_out, qv_cam_out, qc_cam_out, qi_cam_out, ncol, pver)
+        call yog_conservation_check(pres_int_cam, tabs_cam_out, qv_cam_out, qc_cam_out, qi_cam_out, prec_cam_out, ncol, pver)
 
         deallocate(tabs_cam_out)
         deallocate(qv_cam_out)
         deallocate(qc_cam_out)
         deallocate(qi_cam_out)
+        deallocate(prec_cam_out)
 
 
 
