@@ -559,6 +559,52 @@ contains
 
     end subroutine extrapolate_to_surface
 
+    subroutine get_n_combined(p_int_cam, p_int_sam, n_combined)
+        !! Take CAM and SAM interfaces and work out the number of interfaces in a
+        !! combined grid
+
+        !! Note we assume that all CAM columns are the same, so only use the first
+        !! column from the chunk to calculate the overlap.
+        real(8), dimension(:,:), intent(in) :: p_int_cam
+        real(8), dimension(:), intent(in) :: p_int_sam
+        integer, intent(out) :: n_combined
+
+        !! local variables
+        integer :: i, n_cam, n_sam
+
+        n_cam = size(p_int_cam, 2)
+        n_sam = size(p_int_sam)
+        i = 1
+        do while (p_int_cam(1, i) > p_int_sam(n_sam))
+            i = i + 1
+        end do
+
+        n_combined = n_sam + (n_cam - i) + 1
+
+    end subroutine get_n_combined
+
+    subroutine construct_combined_grid(p_int_cam, p_int_sam, n_combined, p_int_combined, p_combined)
+        real(8), dimension(:,:), intent(in) :: p_int_cam
+        real(8), dimension(:), intent(in) :: p_int_sam
+        real(8), dimension(:,:), intent(out) :: p_int_combined, p_combined
+        integer, intent(in) :: n_combined
+
+        integer :: nz_cam, ncol_cam, n_cam_top, n_extract, i
+
+        ncol_cam = size(p_int_cam, 1)
+        nz_cam = size(p_int_cam, 2)
+
+        n_cam_top = nrf + nz_cam - n_combined + 1
+
+        do i = 1, ncol_cam
+            p_int_combined(i, 1:nrf) = p_int_sam(1:nrf)
+            p_int_combined(i, nrf+1:) = p_int_cam(i, n_cam_top : nz_cam)
+            p_combined(i,:) = (p_int_combined(i,2:) + p_int_combined(i,:n_combined-1)) / 2.0
+        end do
+
+    end subroutine construct_combined_grid
+
+
     subroutine sam_sounding_init(filename)
         !! Read various profiles in from SAM sounding file
 
