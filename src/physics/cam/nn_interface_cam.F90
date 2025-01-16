@@ -192,23 +192,23 @@ contains
         ! TODO Interpolate all variables in one call
         ! Set surface values
         call extrapolate_to_surface(pres_cam(1:ncol, :), qi_cam(1:ncol, :), pres_sfc_cam(1:ncol), qi_surf)
-        where (qi_surf>=0)
+!        where (qi_surf>=0)
             qi_surf = qi_surf
-        elsewhere
-            qi_surf = 0
-        end where
+!        elsewhere
+!            qi_surf = 0
+!        end where
         call extrapolate_to_surface(pres_cam(1:ncol, :), qc_cam(1:ncol, :), pres_sfc_cam(1:ncol), qc_surf)
-        where (qc_surf>=0)
+!        where (qc_surf>=0)
             qc_surf = qc_surf
-        elsewhere
-            qc_surf = 0
-        end where
+!        elsewhere
+!            qc_surf = 0
+!        end where
         call extrapolate_to_surface(pres_cam(1:ncol, :), qv_cam(1:ncol, :), pres_sfc_cam(1:ncol), qv_surf)
-        where (qv_surf>=0)
+!        where (qv_surf>=0)
             qv_surf = qv_surf
-        elsewhere
-            qv_surf = 0
-        end where
+!        elsewhere
+!            qv_surf = 0
+!        end where
         call extrapolate_to_surface(pres_cam(1:ncol, :), tabs_cam(1:ncol, :), pres_sfc_cam(1:ncol), tabs_surf)
 
         call interp_to_sam(pres_cam(1:ncol, :), pres_sfc_cam(1:ncol), &
@@ -483,7 +483,7 @@ contains
             if (p_int_norm_cam(i, k) < p_int_norm_sam(nrf+1)) then
                 ! Anything above the SAM NN grid should be set to 0.0
 !                 write(*,*) "CAM pressure is lower than SAM top: set tend to 0.0."
-                var_cam(i, k) = 0.0
+!                var_cam(i, k) = 0.0
 
             else
                 ! Get the pressures at the top and bottom of the CAM cell
