@@ -184,7 +184,7 @@ contains
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         precsfc(:)=0.
         !-----------------------------------------------------
-        write(iulog, *), "Before conversion:"
+        write(iulog, *), "Before extrapolation:"
         call yog_conservation_check(pres_int_cam, tabs_cam, qv_cam, qc_cam, qi_cam, precsfc,  ncol, pver)
         !-----------------------------------------------------
 
@@ -483,7 +483,7 @@ contains
             if (p_int_norm_cam(i, k) < p_int_norm_sam(nrf+1)) then
                 ! Anything above the SAM NN grid should be set to 0.0
 !                 write(*,*) "CAM pressure is lower than SAM top: set tend to 0.0."
-!                var_cam(i, k) = 0.0
+                 var_cam(i, k) = 0.0
 
             else
                 ! Get the pressures at the top and bottom of the CAM cell
