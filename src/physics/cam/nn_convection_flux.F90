@@ -279,11 +279,11 @@ contains
             t_delta_adv(i,nrf) = - (0.0 - t_flux_adv(nrf)) * irhoadzdz(nrf)
             q_delta_adv(i,nrf) = - (0.0 - q_flux_adv(nrf)) * irhoadzdz(nrf)
             ! q must be >= 0 so ensure delta won't reduce it below zero
-            do k=1,nrf
-                if (q(i,k) < -q_delta_adv(i,k)) then
-                    q_delta_adv(i,k) = -q(i,k)
-                end if
-            end do
+!            do k=1,nrf
+!                if (q(i,k) < -q_delta_adv(i,k)) then
+!                    q_delta_adv(i,k) = -q(i,k)
+!                end if
+!            end do
 
             ! Update q and t with delta values
             q(i,1:nrf) = q(i,1:nrf) + q_delta_adv(i,1:nrf)
@@ -291,13 +291,13 @@ contains
 
             ! ensure autoconversion tendency won't reduce q below 0
             do k=1,nrf
-                omp(k) = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
+                omp(k) = min(1.,(tabs(i,k)-tprmin)*a_pr) !max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
                 fac(k) = (fac_cond + fac_fus * (1.0 - omp(k)))
-                if (q_tend_auto(k) < 0) then
-                    q_delta_auto(i,k) = - min(-q_tend_auto(k) * dtn, q(i,k))
-                else
+ !               if (q_tend_auto(k) < 0) then
+ !                   q_delta_auto(i,k) = - min(-q_tend_auto(k) * dtn, q(i,k))
+ !               else
                     q_delta_auto(i,k) = q_tend_auto(k) * dtn
-                endif
+ !               endif
             end do
 
             ! Update with autoconversion q and t deltas (dt = -dq*(latent_heat/cp))
@@ -306,19 +306,19 @@ contains
             t(i,1:nrf) = t(i,1:nrf) + t_delta_auto(i,1:nrf)
 
             ! Ensure sedimenting ice will not reduce q below zero anywhere
-            do k=2,nrf
-                if (q_sed_flux(k) < 0) then
-                    ! If flux is negative ensure we don't lose more than is already present
-                    if ( q(i,k) < -q_sed_flux(k)* irhoadzdz(k)) then
-                        q_sed_flux(k) = -q(i,k)/irhoadzdz(k)
-                    end if
-                else
-                    ! If flux is positive ensure we don't gain more than is in the box below
-                    if (q(i,k-1) < q_sed_flux(k)* irhoadzdz(k)) then
-                        q_sed_flux(k) = q(i,k-1)/irhoadzdz(k)
-                    end if
-                end if
-            end do
+            !do k=2,nrf
+            !    if (q_sed_flux(k) < 0) then
+            !        ! If flux is negative ensure we don't lose more than is already present
+            !        if ( q(i,k) < -q_sed_flux(k)* irhoadzdz(k)) then
+            !            q_sed_flux(k) = -q(i,k)/irhoadzdz(k)
+            !        end if
+            !    else
+            !        ! If flux is positive ensure we don't gain more than is in the box below
+            !        if (q(i,k-1) < q_sed_flux(k)* irhoadzdz(k)) then
+            !            q_sed_flux(k) = q(i,k-1)/irhoadzdz(k)
+            !        end if
+            !    end if
+            !end do
 
             ! Convert sedimenting fluxes to deltas
             do k=1,nrf-1 ! One level less than I actually use
@@ -327,12 +327,12 @@ contains
             ! Enforce boundary condition at top of column
             q_delta_sed(i,nrf) = - (0.0 - q_sed_flux(nrf)) * irhoadzdz(nrf)
             ! q must be >= 0 so ensure delta won't reduce it below zero
-            do k=1,nrf
-                if (q_delta_sed(i,k) < 0) then
-                    q_delta_sed(i,k) = min(-q_delta_sed(i,k), q(i,k))
-                    q_delta_sed(i,k) = -q_delta_sed(i,k)
-                end if
-            end do
+            !do k=1,nrf
+            !    if (q_delta_sed(i,k) < 0) then
+            !        q_delta_sed(i,k) = min(-q_delta_sed(i,k), q(i,k))
+            !        q_delta_sed(i,k) = -q_delta_sed(i,k)
+            !    end if
+            !end do
 
             ! Update q and t with sed q and t deltas (dt = -dq*(latent_heat/cp))
             q(i,1:nrf) = q(i,1:nrf) + q_delta_sed(i,1:nrf)
@@ -352,9 +352,9 @@ contains
             precsfc(i) = precsfc(i) * dz
 
             ! As a final check enforce q must be >= 0.0
-            do k = 1,nrf
-                q(i,k) = max(0.,q(i,k))
-            end do
+            !do k = 1,nrf
+            !    q(i,k) = max(0.,q(i,k))
+            !end do
         end do
         ! End of loop over columns
 
