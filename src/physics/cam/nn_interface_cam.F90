@@ -177,6 +177,10 @@ contains
             !! precipitation to the CAM model
         real(8), dimension(:,:), allocatable :: qv_cam_out, qc_cam_out, qi_cam_out
             !! moisture content [kg/kg] to the CAM model
+        real(8) :: pdel(ncol, pver)
+            !! variable to hold pressure difference in grid cell
+        real(8) :: precsfc_cam(ncol)
+            !! surface precipitation calculated from CAM tendencies
         integer :: ncol_chnk, nver_chnk
 
         integer :: i,k
@@ -313,7 +317,18 @@ contains
         deallocate(qi_cam_out)
         deallocate(prec_cam_out)
 
-
+        ! Calculate precipitation from tendencies in CAM space
+        precsfc_cam = 0.0
+        pdel(:,:) = pres_int_cam(:, :pver) - pres_int_cam(:, 2:pver+1)
+        do i = 1, ncol ! run over the columns
+          do k = 1, pver ! run over the vertical levels
+            precsfc_cam(i) = precsfc_cam(i) &
+                             + (dqi(i,k) + dqc(i,k) + dqv(i,k)) &
+                             * dtn * pdel(i,k) * 1.0D-3 / gravit
+          end do
+        end do
+        write(iulog, *), "Prec calculated in SAM space: ", precsfc * dtn
+        write(iulog, *), "Prec calculated in CAM space: ", precsfc_cam
 
     end subroutine nn_convection_flux_CAM
 
