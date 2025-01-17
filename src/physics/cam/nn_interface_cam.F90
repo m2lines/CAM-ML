@@ -83,7 +83,7 @@ contains
         real(8), intent(in) :: t(:,:) ! temperature
         real(8), intent(in) :: qv(:,:), qc(:,:), qi(:, :) ! moisture components: water vapor, cloud water, cloud ice
         real(8), intent(in) :: prec(:)  !! precipitation that has come out of the column
-        real(8) :: pdel(ncol, nver-1)  ! pressure in grid cell
+        real(8) :: pdel(ncol, nver)  ! pressure in grid cell
         real(8) :: se(ncol)       ! sum of energy
         real(8) :: sw(ncol)       ! sum of water
         real(8) :: wv(ncol), wl(ncol), wi(ncol)  ! water components: vapor, liquid, ice 
@@ -99,10 +99,10 @@ contains
         sw = 0.0
 
         ! get the values in the grid cell from those on the edges
-        pdel = p_int(:, :nver-1) - p_int(:, 2:nver)
+        pdel = p_int(:, :nver) - p_int(:, 2:nver+1)
 
         do i = 1, ncol ! run over the columns
-          do k = 1, nver-1 ! run over the vertical levels
+          do k = 1, nver ! run over the vertical levels
             se(i) = se(i) + t(i,k) *cpair*pdel(i,k)/gravit
             wv(i) = wv(i) + qv(i,k)      *pdel(i,k)/gravit
             wl(i) = wl(i) + qc(i,k)      *pdel(i,k)/gravit
