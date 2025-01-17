@@ -1688,7 +1688,7 @@ contains
          physics_state_check, physics_ptend_scale
     use cam_diagnostics, only: diag_conv_tend_ini, diag_phys_writeout, diag_conv, diag_export, diag_state_b4_phys_write
     use cam_history,     only: outfld
-    use physconst,       only: cpair, latvap
+    use physconst,       only: cpair, latvap, gravit
     use constituents,    only: pcnst, qmin, cnst_get_ind
     use convect_deep,    only: convect_deep_tend, convect_deep_tend_2, deep_scheme_does_scav_trans
     use time_manager,    only: is_first_step, get_nstep
@@ -1812,6 +1812,7 @@ contains
     real(r8) :: flx_heat(pcols)
     type(check_tracers_data):: tracerint             ! energy integrals and cummulative boundary fluxes
     real(r8) :: zero_tracers(pcols,pcnst)
+    real(r8) :: yog_prec_check(pcols)
 
     logical   :: lq(pcnst)
 
@@ -1971,10 +1972,21 @@ contains
 
         call yog_tend(ztodt, state, ptend, pbuf)
 
+        ! Add a calculation of YOG prec from tendencies passed back to ptend
+        ! Follows the formulation in the energy checker
+        yog_prec_check(pcols) = 0.0
+        do i = 1, pver
+            yog_prec_check(:) = yog_prec_check(:) &
+                                + (ptend%q(:,i,1) + ptend%q(:,i,ixcldice) + ptend%q(:,i,ixcldliq)) &
+                                  * ztodt * 1.0D-3 * state%pdel(:,i) / gravit
+        end do
+        write(iulog, *), "Prec calculated in physpkg from tends : ", yog_prec_check
+
         call physics_update(state, ptend, ztodt, tend)
 
         call t_stopf('yog_nn')
 
+        ! Get the boundary flux from precipitation and check mass/energy conservation
         flx_cnd(:ncol) = prec_dp(:ncol)
         call check_energy_chng(state, tend, "yog_nn", nstep, ztodt, zero, flx_cnd, zero, flx_heat)
     end if
