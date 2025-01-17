@@ -14,6 +14,8 @@ use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           a_bg, a_pr, an, bn, ap, bp, &
                           omegan, check
 
+use physconst, only: gravit
+use ppgrid, only: pver
 implicit none
 private
 
@@ -122,7 +124,14 @@ contains
         real(8), dimension(ncol)      :: precsfc_i
             !! precipitation at surface from one call to parameterisation
 
-        integer :: k
+
+        ! Variables for calculation of precipitation on CAM grid
+        real(8) :: pdel(ncol, pver)
+            !! variable to hold pressure difference in grid cell
+        real(8) :: precsfc_cam(ncol)
+            !! surface precipitation calculated from SAM tendencies on CAM grid
+
+        integer :: i,k
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         precsfc(:)=0.
@@ -212,13 +221,31 @@ contains
 
         !-----------------------------------------------------
 
-        ! Interpolate SAM variables to the CAM pressure levels
-        ! setting tendencies above the SAM grid to 0.0
+        ! Interpolate to CAM grid pressure levels setting tendencies above the SAM grid to 0.0
         ! TODO Interpolate all variables in one call
         call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), dqv_sam, dqv(1:ncol, :))
         call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), dqc_sam, dqc(1:ncol, :))
         call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), dqi_sam, dqi(1:ncol, :))
         call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), ds_sam,  ds(1:ncol, :))
+
+        !-----------------------------------------------------
+        ! To reduce errors from interpolation and variable conversion calculate
+        ! precipitation using CAM variables on CAM grid
+
+        ! Calculate precipitation rate from CAM tendencies on CAM grid
+        ! Follows vertical integral approach of energy checker
+        precsfc_cam = 0.0
+        pdel(:,:) = pres_int_cam(:, :pver) - pres_int_cam(:, 2:pver+1)
+        do i = 1, ncol ! run over the columns
+          do k = 1, pver ! run over the vertical levels
+            precsfc_cam(i) = precsfc_cam(i) &
+                             + (dqi(i,k) + dqc(i,k) + dqv(i,k)) &
+                             * pdel(i,k) * 1.0D-3 / gravit
+          end do
+        end do
+
+        ! Use the CAM-calculated precipitation in subsequent calculations by overwriting precsfc
+        precsfc = precsfc_cam
 
     end subroutine nn_convection_flux_CAM
 
