@@ -323,7 +323,7 @@ contains
         do i = 1, ncol ! run over the columns
           do k = 1, pver ! run over the vertical levels
             precsfc_cam(i) = precsfc_cam(i) &
-                             + (dqi(i,k) + dqc(i,k) + dqv(i,k)) &
+                             - (dqi(i,k) + dqc(i,k) + dqv(i,k)) &
                              * dtn * pdel(i,k) * 1.0D-3 / gravit
           end do
         end do

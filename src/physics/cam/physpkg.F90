@@ -1977,7 +1977,7 @@ contains
         yog_prec_check(pcols) = 0.0
         do i = 1, pver
             yog_prec_check(:) = yog_prec_check(:) &
-                                + (ptend%q(:,i,1) + ptend%q(:,i,ixcldice) + ptend%q(:,i,ixcldliq)) &
+                                - (ptend%q(:,i,1) + ptend%q(:,i,ixcldice) + ptend%q(:,i,ixcldliq)) &
                                   * ztodt * 1.0D-3 * state%pdel(:,i) / gravit
         end do
         write(iulog, *), "Prec calculated in physpkg from tends : ", yog_prec_check
