@@ -324,11 +324,16 @@ contains
           do k = 1, pver ! run over the vertical levels
             precsfc_cam(i) = precsfc_cam(i) &
                              - (dqi(i,k) + dqc(i,k) + dqv(i,k)) &
-                             * dtn * pdel(i,k) * 1.0D-3 / gravit
+                             * pdel(i,k) * 1.0D-3 / gravit
           end do
         end do
+
+        ! Overwrite SAM prec with CAM prec for passing to coupler and energy checker
+        precsfc = 0.0
+        precsfc = precsfc_cam
+
         write(iulog, *), "Prec calculated in SAM space: ", precsfc * dtn
-        write(iulog, *), "Prec calculated in CAM space: ", precsfc_cam
+        write(iulog, *), "Prec calculated in CAM space: ", precsfc_cam * dtn
 
     end subroutine nn_convection_flux_CAM
 
