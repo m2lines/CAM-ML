@@ -251,7 +251,7 @@ contains
                                 rho, adz, dz, dtn, &
                                 precsfc_i)
         ! Update precsfc with prec from this timestep
-        precsfc = precsfc + precsfc_i
+        precsfc = precsfc - precsfc_i
 
         !-----------------------------------------------------
 
@@ -306,7 +306,7 @@ contains
         qv_cam_out = qv_cam + dtn * dqv
         qc_cam_out = qc_cam + dtn * dqc
         qi_cam_out = qi_cam + dtn * dqi
-        prec_cam_out = dtn * precsfc
+        prec_cam_out = - dtn * precsfc
 
         write(iulog, *), "After conversion back:"
         call yog_conservation_check(pres_int_cam, tabs_cam_out, qv_cam_out, qc_cam_out, qi_cam_out, prec_cam_out, ncol, pver)
@@ -323,7 +323,7 @@ contains
         do i = 1, ncol ! run over the columns
           do k = 1, pver ! run over the vertical levels
             precsfc_cam(i) = precsfc_cam(i) &
-                             - (dqi(i,k) + dqc(i,k) + dqv(i,k)) &
+                             + (dqi(i,k) + dqc(i,k) + dqv(i,k)) &
                              * pdel(i,k) * 1.0D-3 / gravit
           end do
         end do
