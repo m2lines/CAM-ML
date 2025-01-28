@@ -73,7 +73,9 @@ Add the following lines:
    `yog_scheme = 'on'` \
     If running a comparison to the ZM scheme also add `run_deep_comp = 'on'`.
 2. `yog_nn_weights = '<PATH/TO/WEIGHTS.nc>'`\
-    The path to the NN weights. There are some weights in `src/physics/cam/' of this respository (CAM-ML) which can be used, or they can be generated from the [standalone model](https://github.com/m2lines/convection-parameterization-in-CAM).
+    The path to the NN weights in a NetCDF file.\
+    The weights are located at [`src/physics/cam/NN_weights_YOG_convection_no_yin_no_rad_dqpsubgrid.nc'](https://github.com/m2lines/CAM-ML/blob/docs-updates/src/physics/cam/NN_weights_YOG_convection_no_yin_no_rad_dqpsubgrid.nc).
+    Alternatively, they can be generated from the [standalone parametrerisation code](https://github.com/m2lines/convection-parameterization-in-CAM).
 3. `SAM_sounding = '<PATH/TO/SAM/SOUNDING.nc>'`\
     The path to the SAM sounding NetCDF file for the parameterisation.\
     This file is located at [src/physics/cam/SAM_sounding.nc](https://github.com/m2lines/CAM-ML/blob/docs-updates/src/physics/cam/SAM_sounding).\
