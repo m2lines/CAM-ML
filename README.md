@@ -2,7 +2,7 @@
 
 This Fork of the CAM model implements a [new convection parameterisation, YOG](https://github.com/m2lines/convection-parameterization-in-CAM).
 The parameterisation is a machine learning implementation using a neural net trained
-on high-resolution cloud-resolving simulations in the SAM model as described in:\
+on high-resolution cloud-resolving simulations in the SAM model as described in:
 
 - Yuval, J., O’Gorman, P.A.
   _Stable machine-learning parameterization of subgrid processes for climate modeling at
@@ -34,7 +34,7 @@ git checkout cesm2.1.5
 
 To use this model in a CESM run you need to modify the `Externals.cfg` file in the
 main CESM directory to replace the CAM entry with:
-```toml
+```
 [cam]
 branch = CAM-ML
 protocol = git
@@ -58,15 +58,33 @@ If you want to change the externals, or have made a mistake in this step, you ha
 
 Details on creating a case can be found
 [here](https://ncar.github.io/CAM/doc/build/html/CAM6.0_users_guide/building-and-running-cam.html) on the NCAR website.
-For this work we are using the gate III testcase which can be set up by running:
+Cases can be created by running:
 ```
-./create_newcase --case <path_to_testcase_directory> --compset FSCAM --res T42_T42 --user-mods-dir ../../components/cam/cime_config/usermods_dirs/scam_gateIII --project NCGD0054
+./create_newcase --case <path_to_testcase_directory> --compset <compset> --res <resolution> --user-mods-dir <case-files> --project <project-code>
 ```
 from `<cesm_root>/cime/scripts/`.
 
-The `<testcase_directory>` should be a separate directory outside of the code directory, to avoid cluttering up the local repository.
+The `path_to_testcase_directory` should be a separate directory outside of the CAM source code directory, to avoid cluttering up the local repository.
+The project code should be provided by the user as appropriate for their machine and cost centre.
 
-Run `./case.setup` for the case setup and creation of namelist files. Optionally, you can also run `./check_case` to check everything is ok. Once this has been done then edit `user_nl_cam` for the case as detailed below. This is a CAM namelist generated from the default for the case.
+Other inputs are testcase dependent. For this work we have been using 3 cases:
+
+* Toga II IOP in SCAM:
+  * compset: `FSCAM`
+  * resolution: `T42_T42`
+  * case-files: `../../components/cam/cime_config/usermods_dirs/scam_togaII`
+* Gate III IOP in SCAM:
+  * compset: `FSCAM`
+  * resolution: `T42_T42`
+  * case-files: `../../components/cam/cime_config/usermods_dirs/scam_gateIII`
+* Aquaplanet:
+  * compset: `QPC6`
+  * resolution: `f09_f09_mg17`
+  * case-files: None
+  * This configuration is for a prescribed SST (QOBS) at approx. 1-degree resolution. For further options see the [atmospheric configuration documentation](https://ncar.github.io/CAM/doc/build/html/users_guide/atmospheric-configurations.html).
+
+Subsequent work will be done from the `testcase_directory`.
+Navigate here and run `./case.setup` for the case setup and creation of namelist files. Optionally, you can also run `./check_case` to check everything is ok. Once this has been done then edit `user_nl_cam` for the case as detailed below. This is a CAM namelist generated from the default for the case.
 Add the following lines:
 
 1. `deep_scheme = 'off'`\
