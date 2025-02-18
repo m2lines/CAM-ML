@@ -277,8 +277,13 @@ contains
         dqc_sam = (qc_sam - qc0_sam) / dtn
         dqi_sam = (qi_sam - qi0_sam) / dtn
         ds_sam = cp_cam * (tabs_sam - tabs0_sam) / dtn
-        ! Convert precipitation from total in m to date in m / s by div by dtn
+        ! Convert precipitation from total in m to tendency in m / s by div by dtn
         precsfc = precsfc / dtn
+        write(iulog, *), "Prec calculated in SAM space before pressure scaling: ", precsfc * dtn
+        ! Rescale precipitation by a ratio CAM/SAM surface pressures (SAM presi is in hPa)
+        precsfc(:ncol) = precsfc(:ncol) * pres_sfc_cam(1:ncol)/ (presi(1) * 100.0)
+        write(iulog, *), "Prec calculated in SAM space after pressure scaling: ", precsfc * dtn
+        write(iulog, *), "Pressure scaling factor: ", pres_sfc_cam(1:ncol) / (presi(1) * 100.0)
 
         !-----------------------------------------------------
 
