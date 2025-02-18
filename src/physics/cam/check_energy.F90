@@ -489,6 +489,7 @@ end subroutine check_energy_get_integrals
                 write(iulog,*) "tw is     ", tw(i)
                 write(iulog,*) "tw_xpd is ", tw_xpd(i)
                 write(iulog,*) "tw_dif is ", tw_dif(i)
+                write(iulog,*) "tw_err is ", tw_xpd(i) - tw(i)
              end if
           end do
        end if
