@@ -205,8 +205,10 @@ contains
         dqc_sam = (qc_sam - qc0_sam) / dtn
         dqi_sam = (qi_sam - qi0_sam) / dtn
         ds_sam = cp_cam * (tabs_sam - tabs0_sam) / dtn
-        ! Convert precipitation from total in m to date in m / s by div by dtn
+        ! Convert precipitation from total in m to tendency in m / s by div by dtn
         precsfc = precsfc / dtn
+        ! Rescale precipitation by ratio of CAM/SAM surface pressures (note SAM presi is in hPa)
+        precsfc(:ncol) = precsfc(:ncol) * pres_sfc_cam(1:ncol)/ (presi(1) * 100.0)
 
         !-----------------------------------------------------
 
