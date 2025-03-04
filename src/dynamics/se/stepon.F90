@@ -12,6 +12,7 @@ use cam_abortutils, only: endrun
 
 use parallel_mod,   only: par
 use dimensions_mod, only: nelemd
+use cam_logfile,    only: iulog
 
 implicit none
 private
@@ -108,6 +109,7 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
    ! Move data into phys_state structure.
    call d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out )
    call t_stopf('d_p_coupling')
+   write(iulog, *), "Timestep in SE dynamics (dtime) is not set  with physics timestep set to (dtime_out) = ", dtime_out
 
 end subroutine stepon_run1
 

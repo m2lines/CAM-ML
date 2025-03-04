@@ -332,6 +332,7 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
    call t_startf('d_p_coupling')
    call d_p_coupling(dyn_state%grid, phys_state, phys_tend,  pbuf2d, dyn_out)
    call t_stopf('d_p_coupling')
+   write(iulog, *), "Timestep in FV dynamics (dtime) is ", dtime, " with physics timestep set to (dtime_out) = ", dtime_out
 
 !EOC
 end subroutine stepon_run1

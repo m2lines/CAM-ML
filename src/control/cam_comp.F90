@@ -241,6 +241,7 @@ subroutine cam_run1(cam_in, cam_out)
    call t_barrierf ('sync_stepon_run1', mpicom)
    call t_startf ('stepon_run1')
    call stepon_run1( dtime_phys, phys_state, phys_tend, pbuf2d, dyn_in, dyn_out )
+   write(iulog, *), "Timestep in cam_comp set by stepon_run1 (dtime_phys) = ", dtime_phys
    call t_stopf  ('stepon_run1')
 
    !----------------------------------------------------------

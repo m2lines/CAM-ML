@@ -1970,6 +1970,8 @@ contains
     if (yog_scheme=='on') then
         call t_startf('yog_nn')
 
+        write(iulog, *), "Timestep in physpkg before call to yog (ztodt) = ", ztodt
+
         call yog_tend(ztodt, state, ptend, pbuf)
 
         ! Add a calculation of YOG prec from tendencies passed back to ptend

@@ -245,6 +245,8 @@ contains
     logical :: state_debug_checks
 
     !-----------------------------------------------------------------------
+    write(iulog, *), "Timestep in phys_update (dt) = ", dt
+    !-----------------------------------------------------------------------
 
     ! The column radiation model does not update the state
     if(single_column.and.scm_crm_mode) return

@@ -395,6 +395,8 @@ end subroutine check_energy_get_integrals
        call endrun('check_energy_chng: cpairv is not allowed to vary when subcolumns are turned on')
     end if
 
+    write(iulog, *), "Timestep in energy checker (ztodt) = ", ztodt
+
     ! Compute vertical integrals of dry static energy (modified), kinetic energy and water (vapor, liquid, ice)
     ke = 0._r8
     se = 0._r8

@@ -19,6 +19,7 @@ module stepon
   use iop,              only: setiopupdate, readiopdata
   use scamMod,          only: use_iop,doiopupdate,use_pert_frc,wfld,wfldh,single_column
   use perf_mod
+  use cam_logfile,       only: iulog
 
   implicit none
   private
@@ -204,6 +205,7 @@ subroutine stepon_run1( ztodt, phys_state, phys_tend , pbuf2d, dyn_in, dyn_out)
                      v3(:,:,beglat:endlat,n3m2), q3(:,:,:,beglat:endlat,n3m2), &
                      omga, phis, phys_state, phys_tend,  pbuf2d, pdeld(:,:,:,n3m2))
   call t_stopf  ('d_p_coupling')
+  write(iulog, *), "Timestep in eulerian dynamics (dtime) is ", dtime, " with physics timestep set to (ztodt) = ", ztodt
 end subroutine stepon_run1
 
 !
