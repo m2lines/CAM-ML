@@ -395,6 +395,7 @@ end subroutine check_energy_get_integrals
        call endrun('check_energy_chng: cpairv is not allowed to vary when subcolumns are turned on')
     end if
 
+    write(iulog, *), "flx_cnd inside energy checker:", flx_cnd(:ncol)
     write(iulog, *), "Timestep in energy checker (ztodt) = ", ztodt
 
     ! Compute vertical integrals of dry static energy (modified), kinetic energy and water (vapor, liquid, ice)
@@ -489,6 +490,7 @@ end subroutine check_energy_get_integrals
                 write(iulog,*) tw(i),tw_xpd(i),tw_dif(i),tend%tw_tnd(i)*ztodt,  &
                       tw_tnd(i)*ztodt,tw_rer(i)
                 write(iulog,*) "tw is     ", tw(i)
+                write(iulog,*) "tw_tnd is ", tw_tnd(i)
                 write(iulog,*) "tw_xpd is ", tw_xpd(i)
                 write(iulog,*) "tw_dif is ", tw_dif(i)
                 write(iulog,*) "tw_err is ", tw_xpd(i) - tw(i)

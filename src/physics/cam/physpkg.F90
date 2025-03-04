@@ -1990,6 +1990,7 @@ contains
 
         ! Get the boundary flux from precipitation and check mass/energy conservation
         flx_cnd(:ncol) = prec_dp(:ncol)
+        write(iulog, *), "flx_cnd to energy checker after YOG ", flx_cnd(:ncol)
         call check_energy_chng(state, tend, "yog_nn", nstep, ztodt, zero, flx_cnd, zero, zero)
     end if
 

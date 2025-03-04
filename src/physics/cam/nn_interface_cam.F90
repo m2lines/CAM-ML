@@ -333,12 +333,12 @@ contains
           end do
         end do
 
+        write(iulog, *), "Prec calculated in SAM space: ", precsfc * dtn
+        write(iulog, *), "Prec calculated in CAM space: ", precsfc_cam * dtn
+
         ! Overwrite SAM prec with CAM prec for passing to coupler and energy checker
         precsfc = 0.0
         precsfc = precsfc_cam
-
-        write(iulog, *), "Prec calculated in SAM space: ", precsfc * dtn
-        write(iulog, *), "Prec calculated in CAM space: ", precsfc_cam * dtn
 
     end subroutine nn_convection_flux_CAM
 
