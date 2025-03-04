@@ -333,8 +333,8 @@ contains
           end do
         end do
 
-        write(iulog, *), "Prec calculated in SAM space: ", precsfc * dtn
-        write(iulog, *), "Prec calculated in CAM space: ", precsfc_cam * dtn
+        write(iulog, *), "Prec calculated in SAM space: ", precsfc
+        write(iulog, *), "Prec calculated in CAM space: ", precsfc_cam
 
         ! Overwrite SAM prec with CAM prec for passing to coupler and energy checker
         precsfc = 0.0
