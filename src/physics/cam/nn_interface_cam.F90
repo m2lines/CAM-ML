@@ -252,6 +252,7 @@ contains
                                 precsfc_i)
         ! Update precsfc with prec from this timestep
         precsfc = precsfc - precsfc_i
+        write(iulog, *), "Prec coming out of nn_convection_flux kg / m^2 : ", precsfc
 
         !-----------------------------------------------------
 
@@ -259,6 +260,7 @@ contains
         call SAM_var_conversion(t_sam, r_sam, tabs_sam, qv_sam, qc_sam, qi_sam)
         ! Convert precipitation from kg/m^2 to m by dividing by density (1000)
         precsfc = precsfc * 1.0D-3
+        write(iulog, *), "Prec coming out of nn_convection_flux m : ", precsfc
 
         !-----------------------------------------------------
         write(iulog, *), "After YOG NN:"
@@ -279,10 +281,10 @@ contains
         ds_sam = cp_cam * (tabs_sam - tabs0_sam) / dtn
         ! Convert precipitation from total in m to tendency in m / s by div by dtn
         precsfc = precsfc / dtn
-        write(iulog, *), "Prec calculated in SAM space before pressure scaling: ", precsfc * dtn
+        write(iulog, *), "Prec rate in SAM space before pressure scaling m / s : ", precsfc
         ! Rescale precipitation by a ratio CAM/SAM surface pressures (SAM presi is in hPa)
         precsfc(:ncol) = precsfc(:ncol) * pres_sfc_cam(1:ncol)/ (presi(1) * 100.0)
-        write(iulog, *), "Prec calculated in SAM space after pressure scaling: ", precsfc * dtn
+        write(iulog, *), "Prec rate in SAM space after pressure scaling m / s : ", precsfc
         write(iulog, *), "Pressure scaling factor: ", pres_sfc_cam(1:ncol) / (presi(1) * 100.0)
 
         !-----------------------------------------------------
@@ -311,7 +313,7 @@ contains
         qv_cam_out = qv_cam + dtn * dqv
         qc_cam_out = qc_cam + dtn * dqc
         qi_cam_out = qi_cam + dtn * dqi
-        prec_cam_out = - dtn * precsfc
+        prec_cam_out = - precsfc
 
         write(iulog, *), "After conversion back:"
         call yog_conservation_check(pres_int_cam, tabs_cam_out, qv_cam_out, qc_cam_out, qi_cam_out, prec_cam_out, ncol, pver)
@@ -333,10 +335,11 @@ contains
           end do
         end do
 
-        write(iulog, *), "Prec calculated in SAM space: ", precsfc
-        write(iulog, *), "Prec calculated in CAM space: ", precsfc_cam
+        write(iulog, *), "Prec calculated in SAM space m / s : ", precsfc
+        write(iulog, *), "Prec calculated in CAM space m / s : ", precsfc_cam
 
         ! Overwrite SAM prec with CAM prec for passing to coupler and energy checker
+        write(iulog, *), "USING CAM-CALCULATED P[RECIPITATION RATE FOR ENERGY CHECKER."
         precsfc = 0.0
         precsfc = precsfc_cam
 

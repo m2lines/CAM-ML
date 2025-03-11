@@ -1939,6 +1939,12 @@ contains
          ztodt,   &
          state,   ptend, cam_in%landfrac, pbuf)
 
+    write(iulog, *), " "
+    write(iulog, *), "==================================================="
+    write(iulog, *), "===== Checkpoint after deep_tend before update ===="
+    write(iulog, *), "==================================================="
+    write(iulog, *), " "
+
     call physics_update(state, ptend, ztodt, tend)
     ! NB: If we want to discard ZM tendencies here we need to call a ptend_dealloc
 
@@ -1966,23 +1972,26 @@ contains
     call check_energy_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
     snow_dp(:ncol) = snow_dp(:ncol) - rice(:ncol)
 
+    write(iulog, *), "CALLING YOG SCHEME"
     ! Yuval O'Gorman scheme
     if (yog_scheme=='on') then
         call t_startf('yog_nn')
 
-        write(iulog, *), "Timestep in physpkg before call to yog (ztodt) = ", ztodt
+        ! write(iulog, *), "Timestep in physpkg before call to yog (ztodt) = ", ztodt
 
         call yog_tend(ztodt, state, ptend, pbuf)
 
-        ! Add a calculation of YOG prec from tendencies passed back to ptend
-        ! Follows the formulation in the energy checker
+        ! Add a calculation of YOG prec rate from tendencies passed back to ptend
+        ! Follows the formulation in the energy checker to give m / s
         yog_prec_check(pcols) = 0.0
         do i = 1, pver
             yog_prec_check(:) = yog_prec_check(:) &
                                 + (ptend%q(:,i,1) + ptend%q(:,i,ixcldice) + ptend%q(:,i,ixcldliq)) &
-                                  * ztodt * 1.0D-3 * state%pdel(:,i) / gravit
+                                * 1.0D-3 &
+                                * state%pdel(:,i) / gravit
         end do
-        write(iulog, *), "Prec calculated in physpkg from tends : ", yog_prec_check
+        write(iulog, *), "Prec calculated in physpkg from tends kg / m^2 / s: ", yog_prec_check * 1000.0
+        write(iulog, *), "Prec calculated in physpkg from tends m / s:        ", yog_prec_check
 
         call physics_update(state, ptend, ztodt, tend)
 
@@ -1990,9 +1999,15 @@ contains
 
         ! Get the boundary flux from precipitation and check mass/energy conservation
         flx_cnd(:ncol) = prec_dp(:ncol)
-        write(iulog, *), "flx_cnd to energy checker after YOG ", flx_cnd(:ncol)
+        write(iulog, *), "flx_cnd to energy checker after YOG                 ", flx_cnd(:ncol)
         call check_energy_chng(state, tend, "yog_nn", nstep, ztodt, zero, flx_cnd, zero, zero)
     end if
+
+    write(iulog, *), " "
+    write(iulog, *), "==================================================="
+    write(iulog, *), "=====  Checkpoint after yog_tend energy check  ===="
+    write(iulog, *), "==================================================="
+    write(iulog, *), " "
 
     !
     ! Call Hack (1994) convection scheme to deal with shallow/mid-level convection

@@ -231,9 +231,9 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
 
    ! Add prec_yog to prec_dp for passing to physpkg and coupler
    ! Note that prec_dp is initialised in the physics buffer and zeroed for deep_scheme='off'
-   write(iulog, *), "Prec stored before adding YOG prec: ", prec(:ncol)
+   write(iulog, *), "Prec stored before adding YOG prec m / s: ", prec(:ncol)
    prec(:ncol) = prec(:ncol) + yog_precsfc(:ncol)
-   write(iulog, *), "Prec stored after adding YOG prec: ", prec(:ncol)
+   write(iulog, *), "Prec stored after adding YOG prec m / s: ", prec(:ncol)
 
 end subroutine yog_tend
 

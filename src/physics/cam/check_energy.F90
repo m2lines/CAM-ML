@@ -396,7 +396,7 @@ end subroutine check_energy_get_integrals
     end if
 
     write(iulog, *), "flx_cnd inside energy checker:", flx_cnd(:ncol)
-    write(iulog, *), "Timestep in energy checker (ztodt) = ", ztodt
+    ! write(iulog, *), "Timestep in energy checker (ztodt) = ", ztodt
 
     ! Compute vertical integrals of dry static energy (modified), kinetic energy and water (vapor, liquid, ice)
     ke = 0._r8
@@ -440,6 +440,7 @@ end subroutine check_energy_get_integrals
        te(i) = se(i) + ke(i) + (latvap+latice)*wv(i) + latice*wl(i)
        tw(i) = wv(i) + wl(i) + wi(i)
     end do
+    write(iulog, *), "total water tw(i) inside energy checker:", flx_cnd(:ncol)
 
     ! compute expected values and tendencies
     do i = 1, ncol
@@ -462,6 +463,15 @@ end subroutine check_energy_get_integrals
        ! relative error, expected value - input state / previous state
        te_rer(i) = (te_xpd(i) - te(i)) / state%te_cur(i)
     end do
+    write(iulog, *) "total water diff tw_dif(i) inside energy checker:", tw_dif(:ncol)
+    write(iulog, *) "Comprises:"
+    write(iulog, *) "    tw :                        ", tw(:)
+    write(iulog, *) "    minus tw_cur :              ", state%tw_cur(:)
+    write(iulog, *) "    should match tw_tnd * dt   :", tw_tnd(:) * ztodt
+    write(iulog, *) "    and also tend%tw_tnd * dt  :", tw_tnd(:) * ztodt
+    write(iulog, *) "    which is - flx_cnd(i) *1000._r8 *dt :", - flx_cnd(:) *1000._r8 * ztodt
+    write(iulog, *) "to give tw_xpd = tw_cur + tw_tnd * ztodt : ", tw_xpd(:)
+    write(iulog, *) "which is expected to match tw            : ", tw(:)
 
     ! relative error for total water (allow for dry atmosphere)
     tw_rer = 0._r8
@@ -489,10 +499,10 @@ end subroutine check_energy_get_integrals
                       " count", state%count, " nstep", nstep, "chunk", lchnk, "col", i
                 write(iulog,*) tw(i),tw_xpd(i),tw_dif(i),tend%tw_tnd(i)*ztodt,  &
                       tw_tnd(i)*ztodt,tw_rer(i)
-                write(iulog,*) "tw is     ", tw(i)
-                write(iulog,*) "tw_tnd is ", tw_tnd(i)
-                write(iulog,*) "tw_xpd is ", tw_xpd(i)
-                write(iulog,*) "tw_dif is ", tw_dif(i)
+                ! write(iulog,*) "tw is     ", tw(i)
+                ! write(iulog,*) "tw_tnd is ", tw_tnd(i)
+                ! write(iulog,*) "tw_xpd is ", tw_xpd(i)
+                ! write(iulog,*) "tw_dif is ", tw_dif(i)
                 write(iulog,*) "tw_err is ", tw_xpd(i) - tw(i)
              end if
           end do
@@ -504,6 +514,9 @@ end subroutine check_energy_get_integrals
        state%te_cur(i) = te(i)
        state%tw_cur(i) = tw(i)
     end do
+    write(iulog,*) "END OF ENERGY CHECKER"
+    write(iulog,*) "tw(:) is:                   ", tw(:)
+    write(iulog,*) "state%tw_cur(:) updated to: ", state%tw_cur(:)
 
     deallocate(cpairv_loc)
 
