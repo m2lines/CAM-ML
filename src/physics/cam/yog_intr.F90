@@ -118,7 +118,7 @@ subroutine yog_init()
   call addfld ('YOGDQ  ',    (/ 'lev' /),  'A', 'kg/kg/s','Q tendency - Yuval-OGorman moist convection')
   call addfld ('YOGDICE',    (/ 'lev' /),  'A', 'kg/kg/s','Cloud ice tendency - Yuval-OGorman convection')
   call addfld ('YOGDLIQ',    (/ 'lev' /),  'A', 'kg/kg/s','Cloud liq tendency - Yuval-OGorman convection')
-  call addfld ('PREC_YOG',   horiz_only ,  'A', 'm/s','Surface preciptation - Yuval-OGorman convection')
+  call addfld ('PREC_YOG',   horiz_only ,  'A', 'm/s','Surface preciptation rate - Yuval-OGorman convection')
   call addfld ('YOGDNUMLIQ', (/ 'lev' /),  'A', 'N/s','Cloud liq number conc. tendency - Yuval-OGorman convection')
   call addfld ('YOGDNUMICE', (/ 'lev' /),  'A', 'N/s','Cloud ice number conc. tendency - Yuval-OGorman convection')
   if (masterproc) then

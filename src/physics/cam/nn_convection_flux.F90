@@ -132,7 +132,8 @@ contains
 
         != unit kg / m**2 :: precsfc
         real(8), intent(out), dimension(:)   :: precsfc
-            !! Surface precipitation due to autoconversion and sedimentation
+            !! Surface precipitation across timestep due to autoconversion and sedimentation
+            !! Can be expressed in m by dividing by density of water 1000 kg / m**3
 
         ! -----------------------------------
         ! Local Variables
