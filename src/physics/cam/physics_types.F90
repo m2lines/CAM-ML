@@ -230,6 +230,9 @@ contains
 
     real(r8) :: zvirv(state%psetcols,pver)  ! Local zvir array pointer
 
+    real(r8) :: q_tot_temp(state%psetcols)  ! temp array for logging q
+    real(r8) :: q_log_temp(state%psetcols)  ! temp array for logging q
+
     real(r8),allocatable :: cpairv_loc(:,:,:)
     real(r8),allocatable :: rairv_loc(:,:,:)
 
@@ -329,10 +332,16 @@ contains
     call cnst_get_ind('NUMRAI', ixnumrain, abort=.false.)
     call cnst_get_ind('NUMSNO', ixnumsnow, abort=.false.)
 
+   write(iulog,*) "In Physics Update ptend%top_level: ", ptend%top_level
+   write(iulog,*) "In Physics Update ptend%top_level: ", ptend%bot_level
+   q_tot_temp(:) = 0.0
     do m = 1, pcnst
+       q_log_temp(:) = 0.0
        if(ptend%lq(m)) then
           do k = ptend%top_level, ptend%bot_level
              state%q(:ncol,k,m) = state%q(:ncol,k,m) + ptend%q(:ncol,k,m) * dt
+             q_tot_temp(:ncol) = ptend%q(:ncol,k,m) * dt * state%pdel(:ncol,k) / gravit
+             q_log_temp(:ncol) = ptend%q(:ncol,k,m) * dt * state%pdel(:ncol,k) / gravit
           end do
 
           ! now test for mixing ratios which are too small
@@ -349,8 +358,10 @@ contains
           end if
 
        end if
+       write(iulog,*) "In Physics Update q component ", m, " = ", q_log_temp(:)
 
     end do
+    write(iulog,*) "In Physics Update total q = ", q_tot_temp(:)
 
     !------------------------------------------------------------------------
     ! This is a temporary fix for the large H, H2 in WACCM-X

@@ -414,9 +414,11 @@ end subroutine check_energy_get_integrals
     do i = 1, ncol
        se(i) = se(i) + state%phis(i)*state%ps(i)/gravit
     end do
+   write(iulog, *), "Integral of water vapor only:        ", wv(i)
 
     ! Don't require cloud liq/ice to be present.  Allows for adiabatic/ideal phys.
     if (ixcldliq > 1  .and.  ixcldice > 1) then
+       write(iulog, *), "cloud liquid and ice present in energy checker!"
        do k = 1, pver
           do i = 1, ncol
              wl(i) = wl(i) + state%q(i,k,ixcldliq)*state%pdel(i,k)/gravit
@@ -424,9 +426,12 @@ end subroutine check_energy_get_integrals
           end do
        end do
     end if
+   write(iulog, *), "Integral of cloud liquid only:       ", wl(i)
+   write(iulog, *), "Integral of cloud ice only:          ", wi(i)
 
     ! Don't require precip either, if microphysics doesn't add it.
     if (ixrain > 1  .and.  ixsnow > 1) then
+       write(iulog, *), "rain and snow present in energy checker!"
        do k = 1, pver
           do i = 1, ncol
              wl(i) = wl(i) + state%q(i,k,ixrain)*state%pdel(i,k)/gravit
@@ -434,6 +439,8 @@ end subroutine check_energy_get_integrals
           end do
        end do
     end if
+   write(iulog, *), "Integral of cloud liquid with rain : ", wl(i)
+   write(iulog, *), "Integral of cloud ice with snow :    ", wi(i)
 
     ! Compute vertical integrals of frozen static energy and total water.
     do i = 1, ncol
@@ -475,6 +482,7 @@ end subroutine check_energy_get_integrals
     write(iulog, *) "    state%tw_cur :                  ", state%tw_cur(:)
     write(iulog, *) "    tw_tnd * ztodt :                ", tw_tnd(:) * ztodt
     write(iulog, *) "which is expected to match tw :     ", tw(:)
+    write(iulog, *) "Discrepancy (tw_xpd-tw) :           ", tw_xpd(:) - tw(:)
 
     ! relative error for total water (allow for dry atmosphere)
     tw_rer = 0._r8
