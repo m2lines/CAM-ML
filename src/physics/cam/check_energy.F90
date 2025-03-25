@@ -440,7 +440,7 @@ end subroutine check_energy_get_integrals
        te(i) = se(i) + ke(i) + (latvap+latice)*wv(i) + latice*wl(i)
        tw(i) = wv(i) + wl(i) + wi(i)
     end do
-    write(iulog, *), "total water tw(i) inside energy checker:", flx_cnd(:ncol)
+    write(iulog, *), "total water tw(i) inside energy checker:", tw(:ncol)
 
     ! compute expected values and tendencies
     do i = 1, ncol
@@ -465,13 +465,16 @@ end subroutine check_energy_get_integrals
     end do
     write(iulog, *) "total water diff tw_dif(i) inside energy checker:", tw_dif(:ncol)
     write(iulog, *) "Comprises:"
-    write(iulog, *) "    tw :                        ", tw(:)
-    write(iulog, *) "    minus tw_cur :              ", state%tw_cur(:)
-    write(iulog, *) "    should match tw_tnd * dt   :", tw_tnd(:) * ztodt
-    write(iulog, *) "    and also tend%tw_tnd * dt  :", tw_tnd(:) * ztodt
-    write(iulog, *) "    which is - flx_cnd(i) *1000._r8 *dt :", - flx_cnd(:) *1000._r8 * ztodt
-    write(iulog, *) "to give tw_xpd = tw_cur + tw_tnd * ztodt : ", tw_xpd(:)
-    write(iulog, *) "which is expected to match tw            : ", tw(:)
+    write(iulog, *) "    tw :                            ", tw(:)
+    write(iulog, *) "    minus state%tw_cur :            ", state%tw_cur(:)
+    write(iulog, *) "    to give :                       ", tw(:) - state%tw_cur(:)
+    write(iulog, *) "Should match tw_tnd * dt:           ", tw_tnd(:) * ztodt
+    write(iulog, *) "    and also tend%tw_tnd * dt  :    ", tend%tw_tnd(:) * ztodt
+    write(iulog, *) "    which is -flx_cnd(i) * rho *dt :", - flx_cnd(:) *1000._r8 * ztodt
+    write(iulog, *) "tw_xpd = tw_cur + tw_tnd * ztodt :  ", tw_xpd(:)
+    write(iulog, *) "    state%tw_cur :                  ", state%tw_cur(:)
+    write(iulog, *) "    tw_tnd * ztodt :                ", tw_tnd(:) * ztodt
+    write(iulog, *) "which is expected to match tw :     ", tw(:)
 
     ! relative error for total water (allow for dry atmosphere)
     tw_rer = 0._r8
