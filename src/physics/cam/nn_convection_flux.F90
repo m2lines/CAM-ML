@@ -71,9 +71,8 @@ contains
         ! ---------------------
         ! Fields from beginning of time step used as NN inputs
         ! ---------------------
-        != unit s :: tabs_i
         real(8), intent(in) :: tabs_i(:, :)
-            !! Temperature
+            !! Temperature indices
 
         != unit 1 :: q_i
         real(8), intent(in) :: q_i(:, :)
