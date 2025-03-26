@@ -148,6 +148,9 @@ contains
 
         ! Other variables
         real(8),   dimension(nrf) :: omp, fac
+
+        != unit s m**3 / kg  :: irhoadz
+        != unit s m**2 / kg  :: irhoadzdz
         real(8),   dimension(size(tabs_i, 2)) :: rsat, irhoadz, irhoadzdz
 
         ! -----------------------------------
@@ -158,8 +161,13 @@ contains
         real(4), dimension(n_outputs) :: outputs
             !! vector of output features from the NN
         ! NN outputs
+
+        != unit kg / (s m**2) :: q_sed_flux
+        ! mass flux of moisture
+        real(8),   dimension(nrf) :: q_sed_flux
+        != unit j / (kg * s) :: t_rad_rest_tend
         real(8),   dimension(nrf) :: t_flux_adv, q_flux_adv, q_tend_auto, &
-                                  q_sed_flux, t_rad_rest_tend
+                                  t_rad_rest_tend
 
         ncol = size(tabs_i, 1)
         nzm = size(tabs_i, 2)
