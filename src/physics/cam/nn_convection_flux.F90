@@ -352,12 +352,18 @@ contains
             ! Calculate surface precipitation
             ! Combination of sedimentation at surface, and autoconversion in the column
             ! Apply sedimenting flux at surface to get rho*dq term
+
+            ! <temeporary-unit-change>
+            ! unit(kg / m**3) :: precfsc
+            ! NB: precsfc should be all 0 here (and thus of any unit)
             precsfc(i) = precsfc(i) - q_sed_flux(1) * irhoadzdz(1) * rho(1) * adz(1) !!  *dtn/dz
             ! Loop up column for all autoconverted precipitation
             do k=1,nrf
                 precsfc(i) = precsfc(i) - q_delta_auto(i,k) * rho(k) * adz(k)
             end do
             precsfc(i) = precsfc(i) * dz
+            ! unit(kg / m**2) :: precsfc (as specified at the start of the subroutine)
+            ! </temporary-unit-change>
 
             ! As a final check enforce q must be >= 0.0
             do k = 1,nrf
