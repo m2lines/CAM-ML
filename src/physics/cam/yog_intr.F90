@@ -239,32 +239,34 @@ subroutine yog_tend(ztodt, state, ptend, pbuf)
    ! Note that prec_dp is initialised in the physics buffer and zeroed for deep_scheme='off'
    prec(:ncol) = prec(:ncol) + yog_precsfc(:ncol)
 
-   ! Update the number concentration tendencies for liquid and ice species for all cells
-   ! Match calculations in the `clubb_tend_cam()` subroutine
-   ! YOG could produce negative number tendency, so we ensure it doesn't reduce total
-   ! number concentration below 0.0 - note that a check on this is also made in physics_update()
-   call cnst_get_ind('NUMLIQ', ixnumliq)
-   call cnst_get_ind('NUMICE', ixnumice)
-   do k = 1, pver
-   do i = 1, ncol
-      ! Liquid
-      num_tem = 3. * ptend%q(i,k,ixcldliq) / (4.0*3.14* 8.0e-6**3*997.0)
-      if (num_tem .lt. 0) then
-         ptend%q(i,k,ixnumliq) = - min(-num_tem, state%q(i,k,ixnumliq)/ztodt)
-      else
-         ptend%q(i,k,ixnumliq) = num_tem
-      endif
-      ! Ice
-      num_tem = 3. * ptend%q(i,k,ixcldice) / (4.0*3.14*25.0e-6**3*500.0)
-      if (num_tem .lt. 0) then
-         ptend%q(i,k,ixnumice) = - min(-num_tem, state%q(i,k,ixnumice)/ztodt)
-      else
-         ptend%q(i,k,ixnumice) = num_tem
-      endif
-   end do
-   end do
-   call outfld('YOGDNUMLIQ ',ptend%q(1,1,ixnumliq) ,pcols   ,lchnk   )
-   call outfld('YOGDNUMICE ',ptend%q(1,1,ixnumice) ,pcols   ,lchnk   )
+   !======== NUMBER CONCENTRATION IS CURRENTLY NOT SET AS IT DETRIMENTALLY IMPACTS THE 
+   !         RESULTS HOWEVER, THE CODE FOR THE CALCULATION IS KEPT BELOW, COMMENTED OUT
+   ! ! Update the number concentration tendencies for liquid and ice species for all cells
+   ! ! Match calculations in the `clubb_tend_cam()` subroutine
+   ! ! YOG could produce negative number tendency, so we ensure it doesn't reduce total
+   ! ! number concentration below 0.0 - note that a check on this is also made in physics_update()
+   ! call cnst_get_ind('NUMLIQ', ixnumliq)
+   ! call cnst_get_ind('NUMICE', ixnumice)
+   ! do k = 1, pver
+   ! do i = 1, ncol
+   !    ! Liquid
+   !    num_tem = 3. * ptend%q(i,k,ixcldliq) / (4.0*3.14* 8.0e-6**3*997.0)
+   !    if (num_tem .lt. 0) then
+   !       ptend%q(i,k,ixnumliq) = - min(-num_tem, state%q(i,k,ixnumliq)/ztodt)
+   !    else
+   !       ptend%q(i,k,ixnumliq) = num_tem
+   !    endif
+   !    ! Ice
+   !    num_tem = 3. * ptend%q(i,k,ixcldice) / (4.0*3.14*25.0e-6**3*500.0)
+   !    if (num_tem .lt. 0) then
+   !       ptend%q(i,k,ixnumice) = - min(-num_tem, state%q(i,k,ixnumice)/ztodt)
+   !    else
+   !       ptend%q(i,k,ixnumice) = num_tem
+   !    endif
+   ! end do
+   ! end do
+   ! call outfld('YOGDNUMLIQ ',ptend%q(1,1,ixnumliq) ,pcols   ,lchnk   )
+   ! call outfld('YOGDNUMICE ',ptend%q(1,1,ixnumice) ,pcols   ,lchnk   )
 
 end subroutine yog_tend
 
