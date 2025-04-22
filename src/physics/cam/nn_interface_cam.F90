@@ -13,6 +13,9 @@ use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
                           a_bg, a_pr, an, bn, ap, bp, &
                           omegan, check
+use physconst, only: gravit, cpairv, cpair
+use ppgrid, only: pcols, pver, begchunk, endchunk
+use cam_logfile, only: iulog
 
 implicit none
 private
@@ -20,7 +23,7 @@ private
 
 !---------------------------------------------------------------------
 ! public interfaces
-public  nn_convection_flux_CAM, &
+public  nn_convection_flux_CAM, yog_conservation_check, &
         nn_convection_flux_CAM_init, nn_convection_flux_CAM_finalize
 
 ! Make these routines public for purposes of testing,
@@ -71,6 +74,48 @@ contains
 
     end subroutine nn_convection_flux_CAM_init
 
+    subroutine yog_conservation_check(p_int, t, qv, qc, qi, prec, &
+            ncol, nver)
+    ! Use this function to check the energy and water conversation by outputting the
+    ! respective sums.  
+    
+        real(8), intent(in) :: p_int(:,:)  ! pressure on grid
+        real(8), intent(in) :: t(:,:) ! temperature
+        real(8), intent(in) :: qv(:,:), qc(:,:), qi(:, :) ! moisture components: water vapor, cloud water, cloud ice
+        real(8), intent(in) :: prec(:)  !! precipitation that has come out of the column
+        real(8) :: pdel(ncol, nver-1)  ! pressure in grid cell
+        real(8) :: se(ncol)       ! sum of energy
+        real(8) :: sw(ncol)       ! sum of water
+        real(8) :: wv(ncol), wl(ncol), wi(ncol)  ! water components: vapor, liquid, ice 
+
+        integer, intent(in) :: ncol                  ! number of atmospheric columns
+        integer, intent(in) :: nver                  ! number of vertical levels
+        integer  i,k                                 ! column, level indices
+
+        se = 0.0
+        wv = 0.0
+        wl = 0.0
+        wi = 0.0
+        sw = 0.0
+
+        ! get the values in the grid cell from those on the edges
+        pdel = p_int(:, :nver-1) - p_int(:, 2:nver)
+
+        do i = 1, ncol ! run over the columns
+          do k = 1, nver-1 ! run over the vertical levels
+            se(i) = se(i) + t(i,k) *cpair*pdel(i,k)/gravit
+            wv(i) = wv(i) + qv(i,k)      *pdel(i,k)/gravit
+            wl(i) = wl(i) + qc(i,k)      *pdel(i,k)/gravit
+            wi(i) = wi(i) + qi(i,k)      *pdel(i,k)/gravit
+            sw(i) = wv(i) + wl(i) + wi(i)
+          end do
+        end do
+
+        write(iulog, *), "Energy sum: ", se
+        write(iulog, *), "Water sum: ", sw
+        write(iulog, *), "Water + prec: ", sw + prec
+
+    end subroutine yog_conservation_check
 
     subroutine nn_convection_flux_CAM(pres_cam, pres_int_cam, pres_sfc_cam, &
                                       tabs_cam, qv_cam, qc_cam, qi_cam, &
@@ -121,12 +166,26 @@ contains
             !! Distance of column from equator (proxy for insolation and sfc albedo)
         real(8), dimension(ncol)      :: precsfc_i
             !! precipitation at surface from one call to parameterisation
+        real(8) :: presi_col(ncol, nz_sam)
+            !! presi repeated ncol times along one dimension, for energy and water checker    
 
-        integer :: k
+
+        ! Variables for the energy checker calculations at the end of the code
+        real(8), dimension(:,:), allocatable :: tabs_cam_out
+            !! absolute temperature [K] to the CAM model
+        real(8), dimension(:), allocatable :: prec_cam_out
+            !! precipitation to the CAM model
+        real(8), dimension(:,:), allocatable :: qv_cam_out, qc_cam_out, qi_cam_out
+            !! moisture content [kg/kg] to the CAM model
+        integer :: ncol_chnk, nver_chnk
+
+        integer :: i,k
 
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         precsfc(:)=0.
-
+        !-----------------------------------------------------
+        write(iulog, *), "Before conversion:"
+        call yog_conservation_check(pres_int_cam, tabs_cam, qv_cam, qc_cam, qi_cam, precsfc,  ncol, pver)
         !-----------------------------------------------------
 
         ! Interpolate CAM variables to the SAM pressure levels
@@ -198,6 +257,15 @@ contains
         precsfc = precsfc * 1.0D-3
 
         !-----------------------------------------------------
+        write(iulog, *), "After YOG NN:"
+        !!presi has just one dimension, so we need to repeat it ncol times to get the required input for the checker.
+        !!Also, convert from hPa to Pa
+        do i = 1, ncol
+                presi_col(i, :) = presi(:)*100.0
+        end do
+        
+        call yog_conservation_check(presi_col, tabs_sam, qv_sam, qc_sam, qi_sam, precsfc, ncol, nrf)
+        !-----------------------------------------------------
 
         ! Convert back into CAM variable tendencies (diff div by dtn) on SAM grid
         ! q into components and tabs to s (mult by cp)
@@ -217,6 +285,35 @@ contains
         call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), dqc_sam, dqc(1:ncol, :))
         call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), dqi_sam, dqi(1:ncol, :))
         call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), ds_sam,  ds(1:ncol, :))
+
+        !-----------------------------------------------------
+        ! For purposes of investigating energy conservation apply the tendencies on the
+        ! CAM grid to the CAM inputs, and apply the Marion conservation checker to see
+        ! if values are consistent with the inputs before the parameterisation.
+        ncol_chnk = size(tabs_cam, 1)
+        nver_chnk = size(tabs_cam, 2)
+        allocate(tabs_cam_out(ncol_chnk,nver_chnk))
+        allocate(qv_cam_out(ncol_chnk,nver_chnk))
+        allocate(qc_cam_out(ncol_chnk,nver_chnk))
+        allocate(qi_cam_out(ncol_chnk,nver_chnk))
+        allocate(prec_cam_out(ncol_chnk))
+
+        tabs_cam_out = tabs_cam + dtn * ds / cp_cam
+        qv_cam_out = qv_cam + dtn * dqv
+        qc_cam_out = qc_cam + dtn * dqc
+        qi_cam_out = qi_cam + dtn * dqi
+        prec_cam_out = dtn * precsfc
+
+        write(iulog, *), "After conversion back:"
+        call yog_conservation_check(pres_int_cam, tabs_cam_out, qv_cam_out, qc_cam_out, qi_cam_out, prec_cam_out, ncol, pver)
+
+        deallocate(tabs_cam_out)
+        deallocate(qv_cam_out)
+        deallocate(qc_cam_out)
+        deallocate(qi_cam_out)
+        deallocate(prec_cam_out)
+
+
 
     end subroutine nn_convection_flux_CAM
 
