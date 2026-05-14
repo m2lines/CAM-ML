@@ -755,7 +755,7 @@ end subroutine clubb_init_cnst
     use units,           only: getunit, freeunit
     use cam_abortutils,  only: endrun
     use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8, &
-                               mpi_integer
+                               mpi_integer, mpi_character
     use clubb_mf,        only: clubb_mf_readnl
 
     use clubb_api_module, only: &
@@ -773,6 +773,9 @@ end subroutine clubb_init_cnst
     logical :: clubb_cloudtop_cooling = .false., clubb_rainevap_turb = .false.
 
     integer :: iunit, read_status, ierr
+
+    logical :: clubb_l_c14_ml 
+    character(len=100) :: clubb_c14_ml_net_filepath
 
     namelist /clubb_his_nl/ clubb_history, clubb_rad_history
     namelist /clubbpbl_diff_nl/ clubb_cloudtop_cooling, clubb_rainevap_turb, &
@@ -899,7 +902,9 @@ end subroutine clubb_init_cnst
          clubb_up2_sfc_coef, &
          clubb_wpxp_L_thresh, &
          clubb_wpxp_Ri_exp, &
-         clubb_z_displace
+         clubb_z_displace, &
+         clubb_l_c14_ml, &
+         clubb_c14_ml_net_filepath
 
     !----- Begin Code -----
 
@@ -978,7 +983,9 @@ end subroutine clubb_init_cnst
                                              clubb_l_mono_flux_lim_spikefix, &  ! Out
                                              clubb_l_host_applies_sfc_fluxes, & ! Out
                                              clubb_l_wp2_fill_holes_tke, & ! Out
-                                             clubb_l_add_dycore_grid ) ! Out
+                                             clubb_l_add_dycore_grid, & ! Out
+                                             clubb_l_c14_ml, & ! Out
+                                             clubb_c14_ml_net_filepath) ! Out
 
     !  Call CLUBB+MF namelist
     call clubb_mf_readnl(nlfile)
@@ -1429,7 +1436,9 @@ end subroutine clubb_init_cnst
                                                  clubb_l_mono_flux_lim_spikefix, &          ! In                      
                                                  clubb_l_host_applies_sfc_fluxes, &         ! In                      
                                                  clubb_l_wp2_fill_holes_tke, &              ! In                  
-                                                 clubb_l_add_dycore_grid, &                 ! In              
+                                                 clubb_l_add_dycore_grid, & 
+                                                 clubb_l_c14_ml, &
+                                                 clubb_c14_ml_net_filepath, &                ! In              
                                                  clubb_config_flags )                       ! Out
 
 #endif
