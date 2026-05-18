@@ -31,6 +31,8 @@ module clubb_intr
   use ref_pres,            only: top_lev => trop_cloud_top_lev
   use scamMOD,             only: single_column, scm_clubb_iop_name, scm_cambfb_mode
 
+  use advance_xp2_xpyp_module, only: &
+      setup_C14_ML_xp2_xpyp   !------------------------------------------ Procedure(s)
 #ifdef CLUBB_SGS
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms, &
                                  clubb_config_flags_type, grid, stats, &
@@ -2051,6 +2053,10 @@ end subroutine clubb_init_cnst
 
     ! The following is physpkg, so it needs to be initialized every time
     call pbuf_set_field(pbuf_ini, fice_idx,    0.0_r8)
+
+    if ( clubb_config_flags%l_c14_ml ) then
+      call setup_C14_ML_xp2_xpyp( clubb_config_flags%c14_ml_net_filepath )
+    end if
 
     ! --------------- !
     ! End             !
