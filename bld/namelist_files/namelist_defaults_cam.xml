@@ -2171,6 +2171,9 @@
 <clubb_do_icesuper                                > .false. </clubb_do_icesuper>
 <clubb_l_ascending_grid                           > .false. </clubb_l_ascending_grid>
 
+<clubb_l_c14_ml                                 > .false. </clubb_l_c14_ml>
+<clubb_c14_ml_net_filepath                      > ''      </clubb_c14_ml_net_filepath>
+
 
 <!-- Lscale_from_tau set by clubb_opts config option -->
 <clubb_l_diag_Lscale_from_tau                     > .false. </clubb_l_diag_Lscale_from_tau>
