@@ -776,8 +776,8 @@ end subroutine clubb_init_cnst
 
     integer :: iunit, read_status, ierr
 
-    logical :: clubb_l_c14_ml 
-    character(len=256) :: clubb_c14_ml_net_filepath
+    logical :: clubb_l_c14_ml
+    character(len=100) :: clubb_c14_ml_net_filepath
 
     namelist /clubb_his_nl/ clubb_history, clubb_rad_history
     namelist /clubbpbl_diff_nl/ clubb_cloudtop_cooling, clubb_rainevap_turb, &
