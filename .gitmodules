@@ -101,10 +101,12 @@
 
 [submodule "clubb"]
 	path = src/physics/clubb
-	url = https://github.com/larson-group/clubb_release
+	url = https://github.com/m2lines/clubb_ML
         fxrequired = AlwaysRequired
         fxsparse = ../.clubb_sparse_checkout
-        fxtag = clubb_4ncar_20260109_ddf5110
+        # The commit-hash below is intended to point to the HEAD of branch
+        # 'clubb_4ncar_with_ml' in the mslines/clubb_ML repository.
+        fxtag = 4037452e43e1f32fd24bd1a3067bd2c58a8ce65f
         fxDONOTUSEurl = https://github.com/larson-group/clubb_release
 
 [submodule "ext_co2_cooling"]

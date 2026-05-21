@@ -4432,6 +4432,16 @@ Exponent for Richardson number in calculation of invrs_tau_wpxp term
 Displacement of log law profile above ground  (units: m)
 </entry>
 
+<entry id="clubb_l_c14_ml" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values=".true.,.false." >
+Enable inference of CLUBB C14 parameter from machine learning model
+</entry>
+
+<entry id="clubb_c14_ml_net_filepath" type="char*100" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Path to machine learning model used to infer CLUBB C14 parameter
+</entry>
+
 <!-- for CLUBB+MF -->
 <entry id="do_clubb_mf" type="logical" category="conv"
        group="clubb_mf_nl" valid_values="" >
