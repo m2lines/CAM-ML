@@ -106,7 +106,7 @@
         fxsparse = ../.clubb_sparse_checkout
         # The commit-hash below is intended to point to the HEAD of branch
         # 'clubb_4ncar_with_ml' in the mslines/clubb_ML repository.
-        fxtag = c35c73e3ac4e3372cc973c33a56bacd26c6f4359
+        fxtag = ab44dc3fa183f54cfcfcfd300de94cc4804200a8
         fxDONOTUSEurl = https://github.com/larson-group/clubb_release
 
 [submodule "ext_co2_cooling"]

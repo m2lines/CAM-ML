@@ -4437,7 +4437,7 @@ Displacement of log law profile above ground  (units: m)
 Enable inference of CLUBB C14 parameter from machine learning model
 </entry>
 
-<entry id="clubb_c14_ml_net_filepath" type="char*100" category="pblrad"
+<entry id="clubb_c14_ml_net_filepath" type="char*256" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Path to machine learning model used to infer CLUBB C14 parameter
 </entry>
