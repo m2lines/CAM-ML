@@ -1296,6 +1296,10 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_use_precip_frac")
     call mpi_bcast(clubb_l_uv_nudge, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_uv_nudge")
+    call mpi_bcast(clubb_l_c14_ml, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_c14_ml")
+    call mpi_bcast(clubb_c14_ml_net_filepath, len(clubb_c14_ml_net_filepath), mpi_character, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_c14_ml_net_filepath")
 
     !  Overwrite defaults if they are true
     if ( clubb_history          ) stats_metadata%l_stats            = .true.
