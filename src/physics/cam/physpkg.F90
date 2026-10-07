@@ -82,6 +82,8 @@ module physpkg
   integer ::  prec_sh_idx        = 0
   integer ::  snow_sh_idx        = 0
   integer ::  dlfzm_idx          = 0     ! detrained convective cloud water mixing ratio.
+  ! XL XL XL
+  integer :: zm_ideep_idx        = 0
 
 !=======================================================================
 contains
@@ -122,6 +124,7 @@ contains
     use ghg_data,           only: ghg_data_register
     use vertical_diffusion, only: vd_register
     use convect_deep,       only: convect_deep_register
+    use yog_intr,           only: yog_register
     use convect_shallow,    only: convect_shallow_register
     use radiation,          only: radiation_register
     use co2_cycle,          only: co2_register
@@ -292,9 +295,12 @@ contains
        ! deep convection
        call convect_deep_register
 
+       if (yog_scheme=='on') then
+          call yog_register
+       end if
+       
        !  shallow convection
        call convect_shallow_register
-
 
        call spcam_register
 
@@ -903,12 +909,15 @@ contains
     call sslt_rebin_init()
     call tropopause_init()
     call dadadj_init()
-
     prec_dp_idx  = pbuf_get_index('PREC_DP')
     snow_dp_idx  = pbuf_get_index('SNOW_DP')
     prec_sh_idx  = pbuf_get_index('PREC_SH')
     snow_sh_idx  = pbuf_get_index('SNOW_SH')
-
+    ! XL XL XL
+    zm_ideep_idx = pbuf_get_index('ZM_IDEEP')
+    ! XL XL XL
+    
+    
     dlfzm_idx = pbuf_get_index('DLFZM', ierr)
 
     call phys_getopts(prog_modal_aero_out=prog_modal_aero)
@@ -1755,6 +1764,9 @@ contains
 
     integer :: i                               ! column indicex
     integer :: ixcldice, ixcldliq              ! constituent indices for cloud liquid and ice water.
+    ! XL XL XL
+    integer :: ixnumliq, ixnumice, ixrain, ixsnow, ixnumrain, ixnumsnow
+    ! XL XL XL          
     ! for macro/micro co-substepping
     integer :: macmic_it                       ! iteration variables
     real(r8) :: cld_macmic_ztodt               ! modified timestep
@@ -1775,6 +1787,9 @@ contains
     real(r8), pointer :: dlfzm(:,:)                ! ZM detrained convective cloud water mixing ratio.
 
     ! convective precipitation variables
+    ! XL XL XL
+    integer,pointer :: ideep(:)
+    ! XL XL XL
     real(r8),pointer :: prec_dp(:)                ! total precipitation from ZM convection
     real(r8),pointer :: snow_dp(:)                ! snow from ZM convection
     real(r8),pointer :: prec_sh(:)                ! total precipitation from Hack convection
@@ -1816,6 +1831,7 @@ contains
     logical   :: lq(pcnst)
 
     real(r8) :: ftem(pcols,pver)              ! Temporary workspace for outfld variables
+    
     !-----------------------------------------------------------------------
 
     call t_startf('bc_init')
@@ -1938,11 +1954,22 @@ contains
          ztodt,   &
          state,   ptend, cam_in%landfrac, pbuf)
 
-    call physics_update(state, ptend, ztodt, tend)
-    ! NB: If we want to discard ZM tendencies here we need to call a ptend_dealloc
+    ! XL XL XL
+    !cmfmc(:ncol,:) = 0._r8 ! XL XL XL MACROP + CLUBB
+    !cmfcme(:ncol,:) = 0._r8 ! XL DMT 
+    !pflx(:ncol,:) = 0._r8 ! XL DMT
+    !zdu(:ncol,:) = 0._r8 ! XL XL XL MACROP
+    
+    rliq(:ncol) = 0._r8
+    rice(:ncol) = 0._r8
+    
+    ! NB: We discard ZM tendencies here so we call a ptend_dealloc
+    call physics_ptend_dealloc(ptend)
+    !call physics_update(state, ptend, ztodt, tend)
+    ! XL XL XL    
 
     call t_stopf('convect_deep_tend')
-
+    
     call pbuf_get_field(pbuf, prec_dp_idx, prec_dp )
     call pbuf_get_field(pbuf, snow_dp_idx, snow_dp )
     call pbuf_get_field(pbuf, prec_sh_idx, prec_sh )
@@ -1954,6 +1981,12 @@ contains
     call pbuf_get_field(pbuf, prec_pcw_idx, prec_pcw )
     call pbuf_get_field(pbuf, snow_pcw_idx, snow_pcw )
 
+    ! XL XL XL
+    call pbuf_get_field(pbuf, zm_ideep_idx, ideep)    
+    prec_dp(:ncol) = 0._r8
+    snow_dp(:ncol) = 0._r8
+    ! XL XL XL 
+    
     if (use_subcol_microp) then
       call pbuf_get_field(pbuf, prec_str_idx, prec_str_sc, col_type=col_type_subcol)
       call pbuf_get_field(pbuf, snow_str_idx, snow_str_sc, col_type=col_type_subcol)
@@ -1969,8 +2002,9 @@ contains
     if (yog_scheme=='on') then
         call t_startf('yog_nn')
 
-        call yog_tend(ztodt, state, ptend, pbuf)
-
+        ! XL XL XL
+        call yog_tend(ztodt, state, ptend, pbuf, cam_in%landfrac,ideep)
+        
         call physics_update(state, ptend, ztodt, tend)
 
         call t_stopf('yog_nn')
@@ -1978,7 +2012,7 @@ contains
         flx_cnd(:ncol) = prec_dp(:ncol)
         call check_energy_chng(state, tend, "yog_nn", nstep, ztodt, zero, flx_cnd, zero, flx_heat)
     end if
-
+    
     !
     ! Call Hack (1994) convection scheme to deal with shallow/mid-level convection
     !
@@ -2068,7 +2102,7 @@ contains
        snow_sed_macmic = 0._r8
        prec_pcw_macmic = 0._r8
        snow_pcw_macmic = 0._r8
-
+    
        do macmic_it = 1, cld_macmic_num_steps
 
           !===================================================
@@ -2139,9 +2173,9 @@ contains
                 flx_heat(:ncol)/cld_macmic_num_steps)
 
           endif
-
+       
           call t_stopf('macrop_tend')
-
+          
           !===================================================
           ! Calculate cloud microphysics
           !===================================================
@@ -2191,6 +2225,7 @@ contains
           else
              call microp_driver_tend(state, ptend, cld_macmic_ztodt, pbuf)
           end if
+          
           ! combine aero and micro tendencies for the grid
           call physics_ptend_sum(ptend_aero, ptend, ncol)
           call physics_ptend_dealloc(ptend_aero)
@@ -2299,10 +2334,9 @@ contains
     !===================================================
     call t_startf('radiation')
 
-
     call radiation_tend( &
        state, ptend, pbuf, cam_out, cam_in, net_flx)
-
+    
     ! Set net flux used by spectral dycores
     do i=1,ncol
        tend%flx_net(i) = net_flx(i)

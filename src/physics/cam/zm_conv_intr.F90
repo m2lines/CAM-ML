@@ -285,7 +285,7 @@ subroutine zm_conv_init(pref_edge)
 
     call addfld ('CAPE',     horiz_only,   'A', 'J/kg', 'Convectively available potential energy')
     call addfld ('FREQZM',   horiz_only  , 'A', 'fraction', 'Fractional occurance of ZM convection') 
-
+    
     call addfld ('ZMMTT',    (/ 'lev' /),  'A', 'K/s', 'T tendency - ZM convective momentum transport')
     call addfld ('ZMMTU',    (/ 'lev' /),  'A', 'm/s2', 'U tendency - ZM convective momentum transport')
     call addfld ('ZMMTV',    (/ 'lev' /),  'A', 'm/s2', 'V tendency - ZM convective momentum transport')
@@ -465,6 +465,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8) :: pcont(pcols), pconb(pcols), freqzm(pcols)
 
    ! history output fields
+   
    real(r8) :: cape(pcols)        ! w  convective available potential energy.
    real(r8) :: mu_out(pcols,pver)
    real(r8) :: md_out(pcols,pver)
@@ -647,7 +648,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    lengath = count(ideep > 0)
 
    call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output
-!
+
+   
 ! Output fractional occurance of ZM convection
 !
    freqzm(:) = 0._r8
@@ -655,12 +657,13 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
       freqzm(ideep(i)) = 1.0_r8
    end do
    call outfld('FREQZM  ',freqzm          ,pcols   ,lchnk   )
-!
+   
+   !
 ! Convert mass flux from reported mb/s to kg/m^2/s
 !
    mcon(:ncol,:pver) = mcon(:ncol,:pver) * 100._r8/gravit
 
-   call outfld('CMFMCDZM', mcon, pcols, lchnk)
+   call outfld('CMFMCDZM', mcon, pcols, lchnk) ! XL DMT
 
    ! Store upward and downward mass fluxes in un-gathered arrays
    ! + convert from mb/s to kg/m^2/s
@@ -672,18 +675,18 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
       end do
    end do
 
-   call outfld('ZMMU', mu_out, pcols, lchnk)
-   call outfld('ZMMD', md_out, pcols, lchnk)
+   call outfld('ZMMU', mu_out, pcols, lchnk) ! XL DMT 
+   call outfld('ZMMD', md_out, pcols, lchnk) ! XL DMT 
 
    ftem(:ncol,:pver) = ptend_loc%s(:ncol,:pver)/cpair
-   call outfld('ZMDT    ',ftem           ,pcols   ,lchnk   )
-   call outfld('ZMDQ    ',ptend_loc%q(1,1,1) ,pcols   ,lchnk   )
+   call outfld('ZMDT    ',ftem           ,pcols   ,lchnk   ) ! XL DMT 
+   call outfld('ZMDQ    ',ptend_loc%q(1,1,1) ,pcols   ,lchnk   ) ! XL DMT 
    call t_stopf ('zm_convr')
 
-   call outfld('DIFZM'   ,dif            ,pcols, lchnk)
-   call outfld('DLFZM'   ,dlf            ,pcols, lchnk)
+   !call outfld('DIFZM'   ,dif            ,pcols, lchnk) XL XL XL CLUBB + MACROP
+   !call outfld('DLFZM'   ,dlf            ,pcols, lchnk) XL XL XL CLUBB + MACROP + PHYSPKG
 
-   if (zmconv_microp) call zm_conv_micro_outfld(conv, dnif, dnlf, lchnk, ncol)
+   if (zmconv_microp) call zm_conv_micro_outfld(conv, dnif, dnlf, lchnk, ncol) ! XL DMT 
 
    pcont(:ncol) = state%ps(:ncol)
    pconb(:ncol) = state%ps(:ncol)
@@ -694,16 +697,16 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
        endif
        !     write(iulog,*) ' pcont, pconb ', pcont(i), pconb(i), cnt(i), cnb(i)
     end do
-    call outfld('PCONVT  ',pcont          ,pcols   ,lchnk   )
-    call outfld('PCONVB  ',pconb          ,pcols   ,lchnk   )
+    call outfld('PCONVT  ',pcont          ,pcols   ,lchnk   ) ! XL DMT  
+    call outfld('PCONVB  ',pconb          ,pcols   ,lchnk   ) ! XL DMT  
 
   call physics_ptend_init(ptend_all, state%psetcols, 'zm_conv_tend')
 
   ! add tendency from this process to tendencies from other processes
-  call physics_ptend_sum(ptend_loc,ptend_all, ncol)
+  !call physics_ptend_sum(ptend_loc,ptend_all, ncol) XL XL XL
 
   ! update physics state type state1 with ptend_loc 
-  call physics_update(state1, ptend_loc, ztodt)
+  !call physics_update(state1, ptend_loc, ztodt) XL XL XL
 
   ! initialize ptend for next process
   lq(:) = .FALSE.
@@ -747,30 +750,30 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 ! Write out variables from zm_conv_evap
 !
    ftem(:ncol,:pver) = ptend_loc%s(:ncol,:pver)/cpair
-   call outfld('EVAPTZM ',ftem           ,pcols   ,lchnk   )
+   call outfld('EVAPTZM ',ftem           ,pcols   ,lchnk   ) ! XL DMT
    ftem(:ncol,:pver) = tend_s_snwprd  (:ncol,:pver)/cpair
-   call outfld('FZSNTZM ',ftem           ,pcols   ,lchnk   )
+   call outfld('FZSNTZM ',ftem           ,pcols   ,lchnk   ) ! XL DMT 
    ftem(:ncol,:pver) = tend_s_snwevmlt(:ncol,:pver)/cpair
-   call outfld('EVSNTZM ',ftem           ,pcols   ,lchnk   )
-   call outfld('EVAPQZM ',ptend_loc%q(1,1,1) ,pcols   ,lchnk   )
-   call outfld('ZMFLXPRC', flxprec, pcols, lchnk)
-   call outfld('ZMFLXSNW', flxsnow, pcols, lchnk)
-   call outfld('ZMNTPRPD', ntprprd, pcols, lchnk)
-   call outfld('ZMNTSNPD', ntsnprd, pcols, lchnk)
-   call outfld('ZMEIHEAT', ptend_loc%s, pcols, lchnk)
-   call outfld('CMFMCDZM   ',mcon ,  pcols   ,lchnk   )
-   call outfld('PRECCDZM   ',prec,  pcols   ,lchnk   )
+   call outfld('EVSNTZM ',ftem           ,pcols   ,lchnk   )  ! XL DMT 
+   call outfld('EVAPQZM ',ptend_loc%q(1,1,1) ,pcols   ,lchnk   )  ! XL DMT 
+   call outfld('ZMFLXPRC', flxprec, pcols, lchnk)  ! XL DMT 
+   call outfld('ZMFLXSNW', flxsnow, pcols, lchnk)  ! XL DMT 
+   call outfld('ZMNTPRPD', ntprprd, pcols, lchnk)  ! XL DMT 
+   call outfld('ZMNTSNPD', ntsnprd, pcols, lchnk)  ! XL DMT 
+   call outfld('ZMEIHEAT', ptend_loc%s, pcols, lchnk)  ! XL DMT 
+   call outfld('CMFMCDZM   ',mcon ,  pcols   ,lchnk   )  ! XL DMT 
+   call outfld('PRECCDZM   ',prec,  pcols   ,lchnk   )  ! XL DMT 
 
 
    call t_stopf ('zm_conv_evap')
 
-   call outfld('PRECZ   ', prec   , pcols, lchnk)
+   call outfld('PRECZ   ', prec   , pcols, lchnk) ! XL DMT
 
   ! add tendency from this process to tend from other processes here
-  call physics_ptend_sum(ptend_loc,ptend_all, ncol)
+  !call physics_ptend_sum(ptend_loc,ptend_all, ncol) XL XL XL
 
   ! update physics state type state1 with ptend_loc 
-  call physics_update(state1, ptend_loc, ztodt)
+  !call physics_update(state1, ptend_loc, ztodt) XL XL XL
 
 
   ! Momentum Transport (non-cam3 physics)
@@ -797,31 +800,31 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
      ptend_loc%v(:ncol,:pver) = wind_tends(:ncol,:pver,2)
      ptend_loc%s(:ncol,:pver) = seten(:ncol,:pver)  
 
-     call physics_ptend_sum(ptend_loc,ptend_all, ncol)
+     call physics_ptend_sum(ptend_loc,ptend_all, ncol) ! XL MOM TEND
 
      ! update physics state type state1 with ptend_loc 
-     call physics_update(state1, ptend_loc, ztodt)
+     call physics_update(state1, ptend_loc, ztodt) ! XL MOM TEND
 
      ftem(:ncol,:pver) = seten(:ncol,:pver)/cpair
      if (zmconv_org) then
-        call outfld('ZM_ORG', state%q(:,:,ixorg), pcols, lchnk)
-        call outfld('ZM_ORG2D', zm_org2d, pcols, lchnk)
+        call outfld('ZM_ORG', state%q(:,:,ixorg), pcols, lchnk) ! XL DMT
+        call outfld('ZM_ORG2D', zm_org2d, pcols, lchnk) ! XL DMT
      endif
-     call outfld('ZMMTT', ftem             , pcols, lchnk)
-     call outfld('ZMMTU', wind_tends(1,1,1), pcols, lchnk)
-     call outfld('ZMMTV', wind_tends(1,1,2), pcols, lchnk)
+     call outfld('ZMMTT', ftem             , pcols, lchnk) ! XL DMT 
+     call outfld('ZMMTU', wind_tends(1,1,1), pcols, lchnk) ! XL DMT 
+     call outfld('ZMMTV', wind_tends(1,1,2), pcols, lchnk) ! XL DMT 
    
      ! Output apparent force from  pressure gradient
-     call outfld('ZMUPGU', pguall(1,1,1), pcols, lchnk)
-     call outfld('ZMUPGD', pgdall(1,1,1), pcols, lchnk)
-     call outfld('ZMVPGU', pguall(1,1,2), pcols, lchnk)
-     call outfld('ZMVPGD', pgdall(1,1,2), pcols, lchnk)
+     call outfld('ZMUPGU', pguall(1,1,1), pcols, lchnk) ! XL DMT  
+     call outfld('ZMUPGD', pgdall(1,1,1), pcols, lchnk) ! XL DMT 
+     call outfld('ZMVPGU', pguall(1,1,2), pcols, lchnk) ! XL DMT 
+     call outfld('ZMVPGD', pgdall(1,1,2), pcols, lchnk) ! XL DMT 
 
      ! Output in-cloud winds
-     call outfld('ZMICUU', icwu(1,1,1), pcols, lchnk)
-     call outfld('ZMICUD', icwd(1,1,1), pcols, lchnk)
-     call outfld('ZMICVU', icwu(1,1,2), pcols, lchnk)
-     call outfld('ZMICVD', icwd(1,1,2), pcols, lchnk)
+     call outfld('ZMICUU', icwu(1,1,1), pcols, lchnk) ! XL DMT 
+     call outfld('ZMICUD', icwd(1,1,1), pcols, lchnk) ! XL DMT 
+     call outfld('ZMICVU', icwu(1,1,2), pcols, lchnk) ! XL DMT 
+     call outfld('ZMICVD', icwd(1,1,2), pcols, lchnk) ! XL DMT 
 
    end if
 
@@ -846,11 +849,11 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                   nstep,   fracis,  ptend_loc%q, fake_dpdry, ztodt)
    call t_stopf ('convtran1')
 
-   call outfld('ZMDICE ',ptend_loc%q(1,1,ixcldice) ,pcols   ,lchnk   )
-   call outfld('ZMDLIQ ',ptend_loc%q(1,1,ixcldliq) ,pcols   ,lchnk   )
+   call outfld('ZMDICE ',ptend_loc%q(1,1,ixcldice) ,pcols   ,lchnk   ) ! XL DMT 
+   call outfld('ZMDLIQ ',ptend_loc%q(1,1,ixcldliq) ,pcols   ,lchnk   ) ! XL DMT 
 
    ! add tendency from this process to tend from other processes here
-   call physics_ptend_sum(ptend_loc,ptend_all, ncol)
+   ! call physics_ptend_sum(ptend_loc,ptend_all, ncol) XL XL XL 
 
    call physics_state_dealloc(state1)
    call physics_ptend_dealloc(ptend_loc)

@@ -1,0 +1,22 @@
+! Users should add all user specific namelist changes below in the form of 
+! namelist_var = new_namelist_value 
+ 
+nhtfrq=0,-6,0,-1
+mfilt=1,4,1,24
+fincl2 = 'PRECC:A', 'PRECL:A', 'RELHUM:A', 'T:A', 'U:A', 'V:A', 'Q:A', 'OMEGA:A', 'PS:A', 'PSL:A',
+         'NUMLIQ:A', 'NUMICE:A', 'CLDLIQ:A', 'CLDICE:A', 'FLNT:A',
+         'YOGDT:A', 'YOGDQ:A', 'YOGDICE:A', 'YOGDLIQ:A'
+fincl3 = 'RVMTEND_CLUBB:A', 'STEND_CLUBB:A', 'RCMTEND_CLUBB:A', 'RIMTEND_CLUBB:A',
+         'MPDT:A', 'MPDQ:A', 'MPDLIQ:A', 'MPDICE:A',
+         'YOGDT:A', 'YOGDQ:A', 'YOGDICE:A', 'YOGDLIQ:A',
+	 'YOG_DQ_ADV:A', 'YOG_DQ_AUTO:A', 'YOG_DQ_SED:A',
+	 'YOG_DT_ADV:A', 'YOG_DT_AUTO:A', 'YOG_DT_SED:A', 'YOG_DT_RAD:A', 'YOG_DT_ADVFLX:A'
+fincl4 = 'PRECC:A', 'PRECL:A', 'FLNT:A'
+
+yog_scheme = 'on'
+yog_nn_weights = '/glade/u/home/xlevine/NN_weights/config_3004_new_regridding_old_HPs_07072026_gSAM_weights.nc'
+sam_sounding   = '/glade/u/home/xlevine/NN_weights/gSAM_Sounding_1.nc'
+
+&cospsimulator_nl
+  docosp         = .true.
+  cosp_amwg      = .true.

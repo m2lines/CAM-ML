@@ -32,6 +32,7 @@ integer :: n_h1
 integer :: n_h2
 integer :: n_h3
 integer :: n_h4
+integer :: n_h5
 integer :: n_out
 
 ! Weights at each hidden layer of the NN
@@ -40,6 +41,7 @@ real(4), allocatable, dimension(:,:)     :: r_w2
 real(4), allocatable, dimension(:,:)     :: r_w3
 real(4), allocatable, dimension(:,:)     :: r_w4
 real(4), allocatable, dimension(:,:)     :: r_w5
+real(4), allocatable, dimension(:,:)     :: r_w6
 
 ! Biases at each hidden layer of the NN
 real(4), allocatable, dimension(:)       :: r_b1
@@ -47,6 +49,7 @@ real(4), allocatable, dimension(:)       :: r_b2
 real(4), allocatable, dimension(:)       :: r_b3
 real(4), allocatable, dimension(:)       :: r_b4
 real(4), allocatable, dimension(:)       :: r_b5
+real(4), allocatable, dimension(:)       :: r_b6
 
 ! Scale factors for inputs
 real(4), allocatable, dimension(:)       :: xscale_mean
@@ -57,6 +60,7 @@ real(4), allocatable, dimension(:)       :: z1
 real(4), allocatable, dimension(:)       :: z2
 real(4), allocatable, dimension(:)       :: z3
 real(4), allocatable, dimension(:)       :: z4
+real(4), allocatable, dimension(:)       :: z5
 
 ! Scale factors for outputs
 real(4), allocatable, dimension(:)       :: yscale_mean
@@ -102,6 +106,7 @@ contains
         z2 = 0.
         z3 = 0.
         z4 = 0.
+        z5 = 0.        
 
         !Normalize features
         features = (features - xscale_mean) / xscale_stnd
@@ -118,7 +123,10 @@ contains
         z4 = matmul(z3, r_w4) + r_b4
         call relu(z4)
 
-        logits = matmul(z4, r_w5) + r_b5
+        z5 = matmul(z4, r_w5) + r_b5
+        call relu(z5)        
+
+        logits = matmul(z5, r_w6) + r_b6
 
         ! Apply scaling and normalisation of each output feature in logits
         out_pos = 0
@@ -141,10 +149,10 @@ contains
         ! This will be the netCDF ID for the file and data variable.
         integer :: ncid
         integer :: in_dimid, out_dimid, single_dimid
-        integer :: h1_dimid, h2_dimid, h3_dimid, h4_dimid
+        integer :: h1_dimid, h2_dimid, h3_dimid, h4_dimid, h5_dimid
         integer :: r_w1_varid, r_w2_varid, r_b1_varid, r_b2_varid
         integer :: r_w3_varid, r_w4_varid, r_b3_varid, r_b4_varid
-        integer :: r_w5_varid, r_b5_varid
+        integer :: r_w5_varid, r_b5_varid, r_w6_varid, r_b6_varid
 
         integer :: xscale_mean_varid, xscale_stnd_varid
         integer :: yscale_mean_varid, yscale_stnd_varid
@@ -162,7 +170,8 @@ contains
 
         call check( nf90_open(trim(nn_filename),NF90_NOWRITE,ncid ))
 
-        call check( nf90_inq_dimid(ncid, 'N_in', in_dimid))
+!        call check( nf90_inq_dimid(ncid, 'N_in', in_dimid))
+        call check( nf90_inq_dimid(ncid, 'N_fc_input', in_dimid))        
         call check( nf90_inquire_dimension(ncid, in_dimid, len=n_in))
         call check( nf90_inq_dimid(ncid, 'N_h1', h1_dimid))
         call check( nf90_inquire_dimension(ncid, h1_dimid, len=n_h1))
@@ -172,6 +181,8 @@ contains
         call check( nf90_inquire_dimension(ncid, h3_dimid, len=n_h3))
         call check( nf90_inq_dimid(ncid, 'N_h4', h4_dimid))
         call check( nf90_inquire_dimension(ncid, h4_dimid, len=n_h4))
+        call check( nf90_inq_dimid(ncid, 'N_h5', h5_dimid)) ! XL
+        call check( nf90_inquire_dimension(ncid, h5_dimid, len=n_h5))        ! XL
         call check( nf90_inq_dimid(ncid, 'N_out', out_dimid))
         call check( nf90_inquire_dimension(ncid, out_dimid, len=n_out))
         call check( nf90_inq_dimid(ncid, 'N_out_dim', out_dimid))
@@ -185,18 +196,21 @@ contains
         allocate(r_w2(n_h1,n_h2))
         allocate(r_w3(n_h2,n_h3))
         allocate(r_w4(n_h3,n_h4))
-        allocate(r_w5(n_h4,n_out))
-
+        allocate(r_w5(n_h4,n_h5))        
+        allocate(r_w6(n_h5,n_out))
+        
         allocate(r_b1(n_h1))
         allocate(r_b2(n_h2))
         allocate(r_b3(n_h3))
         allocate(r_b4(n_h4))
-        allocate(r_b5(n_out))
+        allocate(r_b5(n_h5))        
+        allocate(r_b6(n_out))
 
         allocate(z1(n_h1))
         allocate(z2(n_h2))
         allocate(z3(n_h3))
         allocate(z4(n_h4))
+        allocate(z5(n_h5))        
 
         allocate(xscale_mean(n_in))
         allocate(xscale_stnd(n_in))
@@ -216,6 +230,8 @@ contains
         call check( nf90_get_var(ncid, r_w4_varid, r_w4))
         call check( nf90_inq_varid(ncid, "w5", r_w5_varid))
         call check( nf90_get_var(ncid, r_w5_varid, r_w5))
+        call check( nf90_inq_varid(ncid, "w6", r_w6_varid))
+        call check( nf90_get_var(ncid, r_w6_varid, r_w6))        
 
         call check( nf90_inq_varid(ncid, "b1", r_b1_varid))
         call check( nf90_get_var(ncid, r_b1_varid, r_b1))
@@ -227,6 +243,8 @@ contains
         call check( nf90_get_var(ncid, r_b4_varid, r_b4))
         call check( nf90_inq_varid(ncid, "b5", r_b5_varid))
         call check( nf90_get_var(ncid, r_b5_varid, r_b5))
+        call check( nf90_inq_varid(ncid, "b6", r_b6_varid))
+        call check( nf90_get_var(ncid, r_b6_varid, r_b6))        
 
         call check( nf90_inq_varid(ncid,"fscale_mean",     xscale_mean_varid))
         call check( nf90_get_var(  ncid, xscale_mean_varid,xscale_mean      ))
@@ -251,7 +269,7 @@ contains
         
         ! Set sizes of the feature groups
         feature_out_sizes(:)   = n_lev
-        feature_out_sizes(2:3) = n_lev-1
+ !       feature_out_sizes(2:3) = n_lev-1
 
     end subroutine nn_cf_net_init
 
@@ -260,9 +278,9 @@ contains
         !! Clean up NN space by deallocating any arrays.
 
         ! Deallocate arrays
-        deallocate(r_w1, r_w2, r_w3, r_w4, r_w5)
-        deallocate(r_b1, r_b2, r_b3, r_b4, r_b5)
-        deallocate(z1, z2, z3, z4)
+        deallocate(r_w1, r_w2, r_w3, r_w4, r_w5, r_w6)
+        deallocate(r_b1, r_b2, r_b3, r_b4, r_b5, r_b6)
+        deallocate(z1, z2, z3, z4, z5)
         deallocate(xscale_mean, xscale_stnd, yscale_mean, yscale_stnd)
         deallocate(feature_out_sizes)
 

@@ -5,6 +5,7 @@ module nn_interface_CAM
 
 !---------------------------------------------------------------------
 ! Libraries to use
+use shr_kind_mod, only: r8=>shr_kind_r8  
 use netcdf
 use nn_convection_flux_mod, only: nn_convection_flux, &
                                   nn_convection_flux_init, nn_convection_flux_finalize, &
@@ -13,8 +14,13 @@ use SAM_consts_mod, only: nrf, ggr, cp, tbgmax, tbgmin, tprmax, tprmin, &
                           fac_cond, fac_sub, fac_fus, &
                           a_bg, a_pr, an, bn, ap, bp, &
                           omegan, check
+use cam_logfile,    only: iulog
 
 implicit none
+
+real(8), parameter :: tprmin = 268.16    ! Minimum temperature for rain, K
+real(8), parameter :: tprmax = 283.16    ! Maximum temperature for snow+graupel, K
+
 private
 
 
@@ -27,6 +33,7 @@ public  nn_convection_flux_CAM, &
 ! otherwise not required outside this module.
 public interp_to_sam, interp_to_cam
 public SAM_var_conversion, CAM_var_conversion
+public interp_flux_cam_midpoint
 
 !---------------------------------------------------------------------
 ! local/private data
@@ -62,7 +69,7 @@ contains
             !! NetCDF filename from which to read model weights
         character(len=136), intent(in) :: sounding_filename
             !! NetCDF filename from which to read SAM sounding and grid data
-
+        
         ! Initialise the Neural Net from file and get info
         call nn_convection_flux_init(nn_filename)
 
@@ -73,17 +80,22 @@ contains
 
 
     subroutine nn_convection_flux_CAM(pres_cam, pres_int_cam, pres_sfc_cam, &
-                                      tabs_cam, qv_cam, qc_cam, qi_cam, &
+                                      tabs_cam, qv_cam, qc_cam, qi_cam, phis_cam, zm_cam, &
+                                      landfrac, ps_cam, &
                                       cp_cam, &
                                       dtn, &
                                       ncol, &
-                                      precsfc, &
-                                      dqi, dqv, dqc, ds)
-        !! Interface to the nn_convection parameterisation for the CAM model
+                                      precsfc, snowsfc, &
+                                      dqi, dqv, dqc, ds, &
+                                      q_delta_adv, q_delta_auto, q_delta_sed, &
+                                      t_delta_adv, t_delta_auto, t_delta_sed, t_delta_rad, &
+                                      t_flux_adv, precflx, snowflx)
 
+        !! Interface to the nn_convection parameterisation for the CAM model
+      
         real(8), intent(in) :: dtn    ! Seconds
         integer, intent(in) :: ncol   ! Number of columns 'used' in each array
-
+        
         real(8), intent(in) :: cp_cam
             !! specific heat capacity of dry air from CAM [J/kg/K]
         real(8), dimension(:,:), intent(in) :: pres_cam
@@ -93,131 +105,257 @@ contains
         real(8), dimension(:), intent(in)   :: pres_sfc_cam
             !! surface pressure [Pa] from the CAM model
         real(8), dimension(:,:), intent(in) :: tabs_cam
-            !! absolute temperature [K] from the CAM model
+        !! absolute temperature [K] from the CAM model        
         real(8), dimension(:,:), intent(in) :: qv_cam, qc_cam, qi_cam
             !! moisture content [kg/kg] from the CAM model
+        real(8), dimension(:,:), intent(in) :: zm_cam
+        real(8), dimension(:), intent(in) :: phis_cam
+        real(8), dimension(:), intent(in)   :: landfrac, ps_cam
+            !! surface pressure [Pa] from the CAM model
 
+        
         real(8), dimension(:, :), intent(out) :: dqi, dqv, dqc, ds
             !! Output tendencies - CAM variables on the CAM grid
-        real(8), dimension(:), intent(out) :: precsfc
+        real(8), dimension(:), intent(out) :: precsfc, snowsfc
             !! Output surface precipitation in CAM
 
+        !! XL XL XL
+        real(8), dimension(:,:), intent(out) :: q_delta_adv, q_delta_auto, q_delta_sed, t_delta_adv, t_delta_auto, t_delta_sed, t_delta_rad
+        real(8), dimension(:,:), intent(out) :: t_flux_adv
+        real(8), dimension(:,:), intent(out) :: precflx, snowflx
+        
+        real(8), allocatable, dimension(:) :: ps0_cam
+        real(8), allocatable, dimension(:,:) :: gamaz_cam
+        real(8), allocatable, dimension(:,:) :: qi0_cam, qv0_cam, qc0_cam, tabs0_cam, q0_cam, t0_cam
+        
+        real(8), allocatable, dimension(:,:) :: qi1_cam, qv1_cam, qc1_cam, tabs1_cam, q1_cam, t1_cam
+        real(8), allocatable, dimension(:,:) :: delta_t_cam, delta_q_cam
+        
+        real(8), allocatable, dimension(:, :) :: t_rad_rest_tend, q_flux_adv, q_tend_auto, q_sed_flux
+        real(8), allocatable, dimension(:, :) :: t_flux_adv_f, q_flux_adv_f, q_sed_flux_f
+        
         ! Local input variables on the SAM grid
-        real(8), dimension(ncol, nrf) :: tabs_sam
-            !! absolute temperature [K] on the SAM grid
-        real(8), dimension(ncol, nrf) :: r_sam
-            !! non-precipitating water mixing ratio [kg/kg] on the SAM grid
-        real(8), dimension(ncol, nrf) :: t_sam
-            !! static energy [J/kg] on the SAM grid
-        real(8), dimension(ncol, nrf) :: qi_sam, qv_sam, qc_sam
-            !! mixing ratios [kg/kg] on the SAM grid
-        real(8), dimension(ncol, nrf) :: qi0_sam, qv0_sam, qc0_sam, tabs0_sam, r0_sam
-            !! Variables at the start of the parameterisation on the SAM grid - used to calculate tendencies
-        real(8), dimension(ncol, nrf) :: dqi_sam, dqv_sam, dqc_sam, ds_sam
-            !! CAM variable tendencies calculated on the SAM grid
-        real(8), dimension(ncol)      :: qi_surf, qv_surf, qc_surf, tabs_surf
+        real(8), dimension(ncol, nrf) :: qi0_sam, qv0_sam, qc0_sam, tabs0_sam, q0_sam, t0_sam
+        !! Variables at the start of the parameterisation on the SAM grid - used to calculate tendencies
+        real(8), dimension(ncol) :: ps0_sam
+
+        real(8), dimension(ncol, nrf) :: t_rad_rest_tend_sam, q_tend_auto_sam
+        real(8), dimension(ncol, nrf) :: t_flux_adv_sam_f, q_flux_adv_sam_f, q_sed_flux_sam_f
+        
+        !! CAM variable tendencies calculated on the SAM grid
+        real(8), dimension(ncol)      :: qi0_surf, qv0_surf, qc0_surf, tabs0_surf, q0_surf
             !! Surface values
         real(8) :: y_in(ncol)
             !! Distance of column from equator (proxy for insolation and sfc albedo)
-        real(8), dimension(ncol)      :: precsfc_i
-            !! precipitation at surface from one call to parameterisation
 
-        integer :: k
+        real(8), dimension(:), allocatable :: landmask_1D
+        real(8), dimension(:,:), allocatable :: landmask_2D  
+        
+        integer :: k, i
+        integer, dimension(:), allocatable :: idx
+        integer :: pver
 
+        real(8), allocatable, dimension(:,:) :: dp_cam
+        
+        ! XL        
+        pver = size(tabs_cam, 2)        
+        allocate(gamaz_cam(ncol, pver))        
+        
+        allocate(q0_cam(ncol, pver))
+        allocate(t0_cam(ncol, pver))        
+        allocate(tabs0_cam(ncol, pver))
+        allocate(qv0_cam(ncol, pver))        
+        allocate(qc0_cam(ncol, pver))
+        allocate(qi0_cam(ncol, pver))
+
+        allocate(q1_cam(ncol, pver))
+        allocate(t1_cam(ncol, pver))        
+        allocate(tabs1_cam(ncol, pver))
+        allocate(qv1_cam(ncol, pver))
+        allocate(qc1_cam(ncol, pver))
+        allocate(qi1_cam(ncol, pver))
+
+        allocate(delta_t_cam(ncol, pver))
+        allocate(delta_q_cam(ncol, pver))
+
+        allocate(t_rad_rest_tend(ncol, pver))
+        allocate(q_flux_adv(ncol, pver))
+        allocate(q_sed_flux(ncol, pver))        
+        allocate(q_tend_auto(ncol, pver))
+
+        allocate(t_flux_adv_f(ncol, pver))
+        allocate(q_flux_adv_f(ncol, pver))
+        allocate(q_sed_flux_f(ncol, pver))
+        
+        allocate(landmask_1D(ncol))
+        allocate(landmask_2D(ncol, pver))
+
+        allocate(dp_cam(ncol, pver))        
+        ! XL        
+        
         ! Initialise precipitation to 0 if required and at start of cycle if subcycling
         precsfc(:)=0.
+        snowsfc(:)=0.
+        
+        do i = 1,ncol
+           do k = 1,pver
+              !gamaz_cam(i,k) = zm_cam(i,k)*ggr/cp_cam 
+              gamaz_cam(i,k) = zm_cam(i,k)*ggr/cp_cam + phis_cam(i)/cp_cam    ! set cp_cam to cpairv
+           end do
+        end do
+        
+        tabs0_cam=tabs_cam(1:ncol,:)
+        qv0_cam=qv_cam(1:ncol,:)
+        qc0_cam=qc_cam(1:ncol,:)
+        qi0_cam=qi_cam(1:ncol,:)
 
-        !-----------------------------------------------------
-
-        ! Interpolate CAM variables to the SAM pressure levels
-        ! TODO Interpolate all variables in one call
-        ! Set surface values
-        call extrapolate_to_surface(pres_cam(1:ncol, :), qi_cam(1:ncol, :), pres_sfc_cam(1:ncol), qi_surf)
-        where (qi_surf>=0)
-            qi_surf = qi_surf
-        elsewhere
-            qi_surf = 0
-        end where
-        call extrapolate_to_surface(pres_cam(1:ncol, :), qc_cam(1:ncol, :), pres_sfc_cam(1:ncol), qc_surf)
-        where (qc_surf>=0)
-            qc_surf = qc_surf
-        elsewhere
-            qc_surf = 0
-        end where
-        call extrapolate_to_surface(pres_cam(1:ncol, :), qv_cam(1:ncol, :), pres_sfc_cam(1:ncol), qv_surf)
-        where (qv_surf>=0)
-            qv_surf = qv_surf
-        elsewhere
-            qv_surf = 0
-        end where
-        call extrapolate_to_surface(pres_cam(1:ncol, :), tabs_cam(1:ncol, :), pres_sfc_cam(1:ncol), tabs_surf)
-
-        call interp_to_sam(pres_cam(1:ncol, :), pres_sfc_cam(1:ncol), &
-                           tabs_cam(1:ncol, :), tabs_sam, tabs_surf)
-        call interp_to_sam(pres_cam(1:ncol, :), pres_sfc_cam(1:ncol), &
-                           qi_cam(1:ncol, :), qi_sam, qi_surf)
-        call interp_to_sam(pres_cam(1:ncol, :), pres_sfc_cam(1:ncol), &
-                           qc_cam(1:ncol, :), qc_sam, qc_surf)
-        call interp_to_sam(pres_cam(1:ncol, :), pres_sfc_cam(1:ncol), &
-                           qv_cam(1:ncol, :), qv_sam, qv_surf)
-
-        !-----------------------------------------------------
-
-        ! Convert CAM Moistures and tabs to SAM q and t
-        call  CAM_var_conversion(qv_sam, qc_sam, qi_sam, r_sam, tabs_sam, t_sam)
-
+        call  CAM_var_conversion(qv0_cam, qc0_cam, qi0_cam, gamaz_cam, q0_cam, tabs0_cam, t0_cam)
         ! Store variables on SAM grid at the start of the timestep
-        ! for calculating tendencies later
-        qv0_sam = qv_sam
-        qc0_sam = qc_sam
-        qi0_sam = qi_sam
-        tabs0_sam = tabs_sam
-
+        ! for calculating tendencies later        
         !-----------------------------------------------------
 
-        tabs0_sam = tabs_sam
-        r0_sam = r_sam
+        !write(iulog,*)'CAM_var_conversion'
+        
+        !write(iulog,*)'1,qv0_cam',qv0_cam
+        !write(iulog,*)'1,qc0_cam',qc0_cam
+        !write(iulog,*)'1,qi0_cam',qi0_cam                
+        !write(iulog,*)'tabs0_cam',tabs0_cam
+        
+        ! Set surface values
+        call extrapolate_to_surface(pres_cam(1:ncol, :), tabs0_cam, pres_sfc_cam(1:ncol), tabs0_surf)
+        call extrapolate_to_surface(pres_cam(1:ncol, :), q0_cam, pres_sfc_cam(1:ncol), q0_surf)        
+        where (q0_surf>=0)
+            q0_surf = q0_surf
+        elsewhere
+            q0_surf = 0
+        end where
+        call interp_to_sam(pres_cam(1:ncol, :), pres_sfc_cam(1:ncol), &
+                           tabs0_cam, tabs0_sam, tabs0_surf)
+        call interp_to_sam(pres_cam(1:ncol, :), pres_sfc_cam(1:ncol), &
+                           q0_cam, q0_sam, q0_surf)
+        
+        !write(iulog,*)'interp_to_sam'        
+        ! NRF2NZ: SAM gridded from 1 to 49 levels; you could change it to produce SAM at all levels
+        ps0_sam=ps_cam(1:ncol)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!        
         ! Run the neural net parameterisation
         ! Updates q and t with delta values
         ! advective, autoconversion (dt = -dq*(latent_heat/cp)),
         ! sedimentation (dt = -dq*(latent_heat/cp)),
         ! radiation rest tendency (multiply by dtn to get dt)
-        call nn_convection_flux(tabs0_sam, r0_sam, &
-                                tabs_sam, &
-                                t_sam, r_sam, &
-                                rho, adz, dz, dtn, &
-                                precsfc_i)
-        ! Update precsfc with prec from this timestep
-        precsfc = precsfc + precsfc_i
+        
+        call nn_convection_flux(tabs0_sam, q0_sam, ps0_sam, landfrac(1:ncol), &
+             t_rad_rest_tend_sam, t_flux_adv_sam_f, &
+             q_flux_adv_sam_f, q_tend_auto_sam, q_sed_flux_sam_f)
+        
+        ! We interpolate fluxes at lower level interface from SAM to CAM grid
+        call interp_flux_sam_to_cam(pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), t_flux_adv_sam_f, t_flux_adv_f)
+        call interp_flux_sam_to_cam(pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), q_flux_adv_sam_f, q_flux_adv_f)
+        call interp_flux_sam_to_cam(pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), q_sed_flux_sam_f, q_sed_flux_f)
 
-        !-----------------------------------------------------
+        call interp_flux_cam_midpoint(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), t_flux_adv_f, t_flux_adv)
+        call interp_flux_cam_midpoint(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), q_flux_adv_f, q_flux_adv)
+        
+        ! Interpolate SAM variables to the CAM pressure levels
+        ! setting tendencies above the SAM grid to 0.0
+        ! TODO Interpolate all variables in one call        
+        call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), t_rad_rest_tend_sam, t_rad_rest_tend)
+        call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), q_tend_auto_sam, q_tend_auto)
 
-        ! Formulate the output variables to CAM as required.
-        call SAM_var_conversion(t_sam, r_sam, tabs_sam, qv_sam, qc_sam, qi_sam)
+        call update_tendencies(dtn, tabs0_cam, q0_cam, t0_cam, pres_int_cam(1:ncol, :), t_rad_rest_tend, t_flux_adv_f, q_flux_adv_f, q_tend_auto, q_sed_flux_f, t1_cam, t_delta_adv, t_delta_auto, t_delta_sed, t_delta_rad, q1_cam, q_delta_adv, q_delta_auto, q_delta_sed, precsfc, snowsfc, precflx, snowflx)        
+        
         ! Convert precipitation from kg/m^2 to m by dividing by density (1000)
         precsfc = precsfc * 1.0D-3
+        snowsfc = snowsfc * 1.0D-3
+        precflx = precflx * 1.0D-3
+        snowflx = snowflx * 1.0D-3        
+        !-----------------------------------------------------
+        ! Formulate the output variables to CAM as required. !
+        call SAM_var_conversion(gamaz_cam, pres_cam(1:ncol, :), t1_cam, q1_cam, tabs1_cam, qv1_cam, qc1_cam, qi1_cam)
 
         !-----------------------------------------------------
 
         ! Convert back into CAM variable tendencies (diff div by dtn) on SAM grid
         ! q into components and tabs to s (mult by cp)
-        dqv_sam = (qv_sam - qv0_sam) / dtn
-        dqc_sam = (qc_sam - qc0_sam) / dtn
-        dqi_sam = (qi_sam - qi0_sam) / dtn
-        ds_sam = cp_cam * (tabs_sam - tabs0_sam) / dtn
-        ! Convert precipitation from total in m to date in m / s by div by dtn
-        precsfc = precsfc / dtn
+        dqv = (qv1_cam - qv0_cam) / dtn
+        dqc = (qc1_cam - qc0_cam) / dtn
+        dqi = (qi1_cam - qi0_cam) / dtn
+        ds = cp_cam * (tabs1_cam - tabs0_cam) / dtn
 
+        precsfc = precsfc / dtn
+        snowsfc = snowsfc / dtn
+        precflx = precflx / dtn
+        snowflx = snowflx / dtn
+        !        write(iulog,*)'precsfc',precsfc
+
+        !write(iulog,*)'dq ds'
+        
         !-----------------------------------------------------
 
-        ! Interpolate SAM variables to the CAM pressure levels
-        ! setting tendencies above the SAM grid to 0.0
-        ! TODO Interpolate all variables in one call
-        call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), dqv_sam, dqv(1:ncol, :))
-        call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), dqc_sam, dqc(1:ncol, :))
-        call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), dqi_sam, dqi(1:ncol, :))
-        call interp_to_cam(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), ds_sam,  ds(1:ncol, :))
+        q_delta_adv(1:ncol, :)=q_delta_adv(1:ncol, :)/dtn
+        q_delta_auto(1:ncol, :)=q_delta_auto(1:ncol, :)/dtn
+        q_delta_sed(1:ncol, :)=q_delta_sed(1:ncol, :)/dtn
+        t_delta_adv(1:ncol, :)=t_delta_adv(1:ncol, :)/dtn
+        t_delta_auto(1:ncol, :)=t_delta_auto(1:ncol, :)/dtn
+        t_delta_sed(1:ncol, :)=t_delta_sed(1:ncol, :)/dtn
+        t_delta_rad(1:ncol, :)=t_delta_rad(1:ncol, :)/dtn        
 
+!        !define landmask: 0 for land - 1 for ocean (convention reversed from landfrac) - any land fraction > 0 defines land 
+!        landmask_1D(1:ncol)=1.0
+!        landmask_2D(1:ncol,:)=1.0
+!        do i=1,ncol      
+!           if (landfrac(i) .gt. 0.0) then
+!              landmask_1D(i)=0.0
+!           end if
+!        end do
+!        do k=1,pver
+!           landmask_2D(1:ncol,k)=landmask_1D(1:ncol)
+!        end do
+
+!        dqi(:ncol,:pver)=dqi(:ncol,:pver)*landmask_2D(:ncol,:pver)
+!        dqv(:ncol,:pver)=dqv(:ncol,:pver)*landmask_2D(:ncol,:pver)
+!        dqc(:ncol,:pver)=dqc(:ncol,:pver)*landmask_2D(:ncol,:pver)
+!        ds(:ncol,:pver)=ds(:ncol,:pver)*landmask_2D(:ncol,:pver)
+        
+!        precsfc(:ncol)=precsfc(:ncol)*landmask_1D(:ncol)
+!        snowsfc(:ncol)=snowsfc(:ncol)*landmask_1D(:ncol)           
+   
+!        q_delta_adv(:ncol,:pver)=q_delta_adv(:ncol,:pver)*landmask_2D(:ncol,:pver)
+!        q_delta_auto(:ncol,:pver)=q_delta_auto(:ncol,:pver)*landmask_2D(:ncol,:pver)
+!        q_delta_sed(:ncol,:pver)=q_delta_sed(:ncol,:pver)*landmask_2D(:ncol,:pver)
+!        t_delta_adv(:ncol,:pver)=t_delta_adv(:ncol,:pver)*landmask_2D(:ncol,:pver)
+!        t_delta_auto(:ncol,:pver)=t_delta_auto(:ncol,:pver)*landmask_2D(:ncol,:pver)
+!        t_delta_sed(:ncol,:pver)=t_delta_sed(:ncol,:pver)*landmask_2D(:ncol,:pver)
+!        t_delta_rad(:ncol,:pver)=t_delta_rad(:ncol,:pver)*landmask_2D(:ncol,:pver)
+!        t_flux_adv(:ncol,:pver)=t_flux_adv(:ncol,:pver)*landmask_2D(:ncol,:pver)        
+        
+        ! deallocate
+        deallocate(gamaz_cam)
+        deallocate(q0_cam)
+        deallocate(t0_cam)
+        deallocate(tabs0_cam)        
+        deallocate(qi0_cam)
+        deallocate(qv0_cam)
+        deallocate(qc0_cam)
+
+        deallocate(q1_cam)
+        deallocate(t1_cam)        
+        deallocate(tabs1_cam)
+        deallocate(qi1_cam)        
+        deallocate(qv1_cam)
+        deallocate(qc1_cam)
+
+        deallocate(delta_t_cam)
+        deallocate(delta_q_cam)
+
+        deallocate(t_rad_rest_tend)
+        deallocate(q_tend_auto)
+
+        deallocate(landmask_1D)
+        deallocate(landmask_2D)        
+
+        deallocate(dp_cam)
+        
     end subroutine nn_convection_flux_CAM
 
 
@@ -233,6 +371,261 @@ contains
     !-----------------------------------------------------------------
     ! Private Subroutines
 
+    ! ---------------------
+    subroutine update_tendencies(dtn, tabs, q_in, t_in, pres_int, t_rad_rest_tend, &
+         t_flux_adv, q_flux_adv, q_tend_auto, q_sed_flux, &
+         t_out, t_delta_adv, t_delta_auto, t_delta_sed, t_delta_rad, &
+         q_out, q_delta_adv, q_delta_auto, q_delta_sed, precsfc, snowsfc, precflx, snowflx)
+      
+      ! all fluxes are defined on half levels (pres_int)
+      
+      integer :: ncol, pver
+      !! array sizes
+      integer :: i, k
+
+      real(8) :: snowfrac, om
+      real(8) :: q_reset
+      
+      real(8), intent(in) :: dtn    ! Seconds            
+      real(8), dimension(:,:), intent(in) :: tabs, q_in, t_in
+      real(8), dimension(:,:), intent(in) :: pres_int
+      real(8), dimension(:), intent(inout) :: precsfc, snowsfc
+            !! interface pressure [Pa] from the CAM model      
+      real(8), dimension(:,:), intent(inout) :: t_rad_rest_tend, q_tend_auto, t_flux_adv, q_flux_adv, q_sed_flux
+      real(8), dimension(:,:), intent(out) :: t_delta_adv, q_delta_adv, q_delta_sed
+      real(8), dimension(:,:), intent(out) :: t_out, t_delta_auto, t_delta_sed, t_delta_rad
+      real(8), dimension(:,:), intent(out) :: q_out, q_delta_auto     
+      real(8), dimension(:,:), intent(out) :: precflx, snowflx
+      
+      real(8), allocatable, dimension(:,:) :: irhoadzdz, dp, omp, fac, nn_mask
+      
+      ncol = size(t_delta_adv, 1)
+      pver = size(t_delta_adv, 2)      
+      allocate(irhoadzdz(ncol,pver))
+      allocate(dp(ncol,pver))
+      allocate(omp(ncol,pver))
+      allocate(fac(ncol,pver))
+      allocate(nn_mask(ncol,pver))
+      
+      do i=1,ncol
+         ! Initialize variables
+         t_out(i,:) = t_in(i,:)
+         q_out(i,:) = q_in(i,:)
+         t_delta_auto(i,:) = 0.
+         q_delta_auto(i,:) = 0.
+         t_delta_sed(i,:) = 0.
+         t_delta_rad(i,:) = 0.
+         t_delta_adv(i,:) = 0.
+         q_delta_adv(i,:) = 0.
+         q_delta_sed(i,:) = 0.
+         
+         omp(i,:) = 0.
+         fac(i,:) = 0.
+         precsfc(i) = 0.
+         snowsfc(i) = 0.
+         
+         precflx(i,:) = 0.
+         snowflx(i,:) = 0.
+         snowfrac = 0.0         
+         q_reset = 1.0E-10 ! XL XL XL
+         !-----------------------------------------------------
+         ! Apply physical constraints and update q and t
+         do k=1,pver
+            dp(i,k) = abs(pres_int(i, k+1) - pres_int(i, k))
+            if (dp(i,k) > 0.0) then
+               irhoadzdz(i,k) = ggr/dp(i,k)*dtn
+            else
+               irhoadzdz(i,k) = 0.0
+            end if
+         end do
+         
+         !-----------------------------------------------------
+         ! Non-precip. water content must be >= 0, so ensure advective fluxes
+         ! will not reduce it below 0 anywhere
+         
+         do k=1,pver-1               
+            t_delta_adv(i,k) = - (t_flux_adv(i,k+1) - t_flux_adv(i,k)) * irhoadzdz(i,k)
+            q_delta_adv(i,k) = - (q_flux_adv(i,k+1) - q_flux_adv(i,k)) * irhoadzdz(i,k)
+         end do
+         ! Enforce boundary condition at top of column
+         t_delta_adv(i,pver) = - (0.0 - t_flux_adv(i,pver)) * irhoadzdz(i,pver)
+         q_delta_adv(i,pver) = - (0.0 - q_flux_adv(i,pver)) * irhoadzdz(i,pver)
+
+         ! Update q and t with delta values                                                                                         
+         q_out(i,1:pver) = q_out(i,1:pver) + q_delta_adv(i,1:pver)
+         t_out(i,1:pver) = t_out(i,1:pver) + t_delta_adv(i,1:pver)        
+                           
+         ! Convert sedimenting fluxes to deltas
+         do k=1,pver-1
+            q_delta_sed(i,k) = - (q_sed_flux(i,k+1) - q_sed_flux(i,k)) * irhoadzdz(i,k)
+         end do
+         ! Enforce boundary condition at top of column
+         q_delta_sed(i,pver) = - (0.0 - q_sed_flux(i,pver)) * irhoadzdz(i,pver)                    
+
+         ! Compute sedimentation on dt (dt = -dq*(latent_heat/cp))
+         t_delta_sed(i,1:pver) = - q_delta_sed(i,1:pver)*(fac_fus+fac_cond)
+         ! Update q and t with delta values
+         q_out(i,1:pver)=q_out(i,1:pver)+q_delta_sed(i,1:pver)         
+         t_out(i,1:pver)=t_out(i,1:pver)+t_delta_sed(i,1:pver)
+
+         ! compute autoconversion tendency
+         do k=1,pver
+            omp(i,k) = max(0.,min(1.,(tabs(i,k)-tprmin)*a_pr))
+            fac(i,k) = (fac_cond + fac_fus * (1.0 - omp(i,k)))
+            q_delta_auto(i,k) = q_tend_auto(i,k) * dtn
+         end do      
+         ! Compute autoconversion on dt (dt = -dq*(latent_heat/cp))
+         t_delta_auto(i,1:pver) = - q_delta_auto(i,1:pver)*fac(i,1:pver)
+         ! Update q and t with delta values 
+         q_out(i,1:pver) = q_out(i,1:pver) + q_delta_auto(i,1:pver)
+         t_out(i,1:pver) = t_out(i,1:pver) + t_delta_auto(i,1:pver)
+         
+         ! As a final check enforce q must be >= 0.0 - reset q_out to epsilon if q_out <0
+         ! This reset is a source of non-precipitating water, which is assumed to come from autoconversion [precipitating water]
+         ! (e.g. droplet evaporation, ice sublimation, re-entrainment of falling condensate, breakup/collision droplets/crystals)
+         ! This positive autoconversion implies a decrease in specific energy ('cooling') locally.
+         ! NB: enough precipitating water must be available to be converted to non-precipitating form.
+         do k = 1,pver
+            if ( q_out(i,k) < 0.0 ) then
+               ! q_reset = q_in(i,k)
+               q_delta_auto(i,k) = q_delta_auto(i,k) + (q_reset - q_out(i,k))
+               t_out(i,k) = t_out(i,k) - fac(i,k) * (q_reset - q_out(i,k))
+               q_out(i,k) = q_reset               
+            end if
+         end do
+         
+         ! Compute net water loss in column (precipitation)
+         do k=1,pver
+            precsfc(i) = precsfc(i) - (q_out(i,k) - q_in(i,k))* dp(i,k) / ggr                       
+         end do
+
+         ! Compute snow at surface (lowest atmospheric level)
+         if(tabs(i,1) >= tprmax) then
+            ! 100% rain
+            snowfrac = 0.0
+         elseif(tabs(i,1) <= tprmin) then
+            ! 100% snow               
+            snowfrac = 1.0
+         else
+            ! mixed-phase
+            om = (tabs(i,1) - tprmin) / (tprmax - tprmin)
+            snowfrac = 1.0 - om
+         endif
+         snowsfc(i) = snowfrac * precsfc(i)
+         
+         ! snowflx: using the formula (A10-13) in KHAIROUTDINOV and RANDALL 2002         
+         precflx(i,pver) = 0.0
+         snowflx(i,pver) = 0.0
+         do k=pver-1,1,-1
+            precflx(i,k) = precflx(i,k+1) - q_delta_auto(i,k) * dp(i,k) / ggr
+            precflx(i,k) = max(precflx(i,k),0.0)
+            if(tabs(i,k) >= tprmax) then
+               ! 100% rain
+               snowfrac = 0.0
+            elseif(tabs(i,k) <= tprmin) then
+               ! 100% snow               
+               snowfrac = 1.0
+            else
+               ! mixed-phase
+               om = (tabs(i,k) - tprmin) / (tprmax - tprmin)
+               snowfrac = 1.0 - om
+            endif
+            snowflx(i,k) = snowfrac * precflx(i,k)
+         end do
+
+         ! Apply radiation rest tendency (multiply by dtn to get delta value)
+         t_delta_rad(i,1:pver) = t_rad_rest_tend(i,1:pver)*dtn
+         ! Update t with delta values
+         t_out(i,1:pver) = t_out(i,1:pver) + t_delta_rad(i,1:pver)
+         
+         if ( precsfc(i) <= 0.0 ) then
+!            write(iulog,*)'Negative Precipitation - All tendencies set to 0 in column'            
+            q_out(i,1:pver) = q_in(i,1:pver)
+            t_out(i,1:pver) = t_in(i,1:pver)
+            q_delta_auto(i,1:pver) = 0.0
+            t_delta_auto(i,1:pver) = 0.0            
+            q_delta_adv(i,1:pver) = 0.0
+            t_delta_adv(i,1:pver) = 0.0            
+            q_delta_sed(i,1:pver) = 0.0
+            t_delta_sed(i,1:pver) = 0.0
+            t_delta_rad(i,1:pver) = 0.0
+            precsfc(i) = 0.0
+            snowsfc(i) = 0.0
+         end if
+         
+      end do
+
+      ! deallocate
+      deallocate(irhoadzdz)
+      deallocate(dp)
+      deallocate(omp)
+      deallocate(fac)
+      
+    end subroutine update_tendencies
+
+    subroutine interp_flux_sam_to_cam(pres_int_cam, pres_sfc_cam, flux_adv_sam, flux_adv_cam)
+
+      real(8), dimension(:,:), intent(in) :: pres_int_cam
+      real(8), dimension(:), intent(in) :: pres_sfc_cam
+      real(8), dimension(:,:), intent(in) :: flux_adv_sam
+      real(8), dimension(:,:), intent(out) :: flux_adv_cam
+
+      real(8), dimension(:,:), allocatable :: p_int_norm_cam
+      real(8), dimension(:), allocatable :: p_int_norm_sam
+      
+      integer :: i, k, ncol, nz_sam, nz_cam, kc_l, kc_u
+      real(8) :: pc_u, pc_l
+      
+      ncol = size(flux_adv_sam, 1)
+      nz_sam = size(flux_adv_sam, 2)
+      nz_cam = size(pres_int_cam, 2)
+      
+      allocate(p_int_norm_sam(nz_sam))
+      allocate(p_int_norm_cam(ncol,nz_cam))
+      
+      p_int_norm_sam(1:nz_sam) = presi(1:nz_sam) / presi(1)
+      do i = 1,ncol
+         do k=1,nz_cam
+            p_int_norm_cam(i,k) = pres_int_cam(i,k) / pres_sfc_cam(i)
+         end do
+      end do
+
+      do i = 1,ncol
+         flux_adv_cam(i,1)=flux_adv_sam(i,1)
+         do k=2,nz_cam
+
+            ! assess whether sam levels exists at cam level
+            if (p_int_norm_sam(nz_sam) .gt. p_int_norm_cam(i,k)) then
+               flux_adv_cam(i,k) = 0.0
+            elseif (p_int_norm_cam(i,k) > p_int_norm_sam(2)) then
+               flux_adv_cam(i, k) = flux_adv_sam(i,1) &
+                                + (p_int_norm_cam(i,k)-1.0) &
+                                * (flux_adv_sam(i,2)-flux_adv_sam(i,1))/(p_int_norm_sam(2)-1.0)
+            else
+               kc_u = 1
+               pc_u = p_int_norm_sam(kc_u)
+               do while (pc_u > p_int_norm_cam(i,k))
+                  kc_u = kc_u + 1
+                  pc_u = p_int_norm_sam(kc_u)
+               end do
+               kc_l = kc_u - 1
+               pc_l = p_int_norm_sam(kc_l)
+
+               ! interpolate variables - Repeat for as many variables as need interpolating
+               flux_adv_cam(i, k) = flux_adv_sam(i, kc_l) &
+                    + (p_int_norm_cam(i,k)-pc_l) &
+                    * (flux_adv_sam(i, kc_u)-flux_adv_sam(i, kc_l))/(pc_u-pc_l)                
+
+            end if
+
+         end do
+      end do
+      
+      deallocate(p_int_norm_sam)
+      deallocate(p_int_norm_cam)      
+      
+    end subroutine interp_flux_sam_to_cam
+          
     subroutine interp_to_sam(p_cam, p_surf_cam, var_cam, var_sam, var_cam_surface)
         !! Interpolate from the CAM pressure grid to the SAM pressure grid.
         !! Uses linear interpolation between nearest grid points on domain (CAM) grid.
@@ -299,7 +692,6 @@ contains
                 stop
             else
                 ! Locate the neighbouring CAM indices to interpolate between
-                ! TODO - this will be slow - speed up later
                 kc_u = 1
                 pc_u = p_norm_cam(i, kc_u)
                 do while (pc_u > p_norm_sam(k))
@@ -354,7 +746,9 @@ contains
         real(8), dimension(nrf+1) :: p_int_norm_sam
         real(8), dimension(:,:), allocatable :: p_norm_cam
         real(8), dimension(:,:), allocatable :: p_int_norm_cam
-
+        
+        real(8), dimension(:), allocatable :: sum_cam, sum_sam
+        
         integer :: i, k, c, nz_cam, ncol_cam, ks, ks_u, ks_l
         real(8) :: ps_u, ps_l, pc_u, pc_l
         real(8) :: p_norm_sam_min
@@ -383,63 +777,99 @@ contains
             ! Check we are within array overlap:
             ! No need to compare bottom end as pressure is normalised to 1.0 for both.
 
-            if (p_int_norm_cam(i, k) < p_int_norm_sam(nrf+1)) then
-                ! Anything above the SAM NN grid should be set to 0.0
-!                 write(*,*) "CAM pressure is lower than SAM top: set tend to 0.0."
-                var_cam(i, k) = 0.0
+            if (p_int_norm_cam(i, k) <= p_int_norm_sam(nrf+1)) then
+               ! Anything above the SAM NN grid should be set to 0.0
+               ! write(*,*) "CAM pressure is lower than SAM top: set tend to 0.0."
+               var_cam(i, k) = 0.0
 
             else
                 ! Get the pressures at the top and bottom of the CAM cell
-                pc_u = p_int_norm_cam(i, k+1)
-                pc_l = p_int_norm_cam(i,k)
 
                 ! Locate the SAM indices to interpolate between
-                ! This will be slow - speed up later
                 ! ks_u is the SAM block with an upper interface above the CAM block
-                ks_u = 1
-                ps_u = p_int_norm_sam(ks_u+1)
-                do while ((ps_u > pc_u) .and. (ks_u < nrf))
-                    ks_u = ks_u + 1
-                    ps_u = p_int_norm_sam(ks_u+1)
-                end do
+                pc_u = p_int_norm_cam(i,k+1)
+                ks_u = 1                
+                ps_u = p_int_norm_sam(ks_u)
+                do while ((ps_u > pc_u) .and. (ks_u < nrf + 1 ))
+                   ks_u = ks_u + 1
+                   ps_u = p_int_norm_sam(ks_u)
+                end do               
+                 
                 ! ks_l is the SAM block with a lower interface below the CAM block
-                ks_l = ks_u
+                pc_l = p_int_norm_cam(i,k)
+                ks_l = 1                
                 ps_l = p_int_norm_sam(ks_l)
-                do while ((ps_l < pc_l) .and. (ks_l > 1))
-                    ks_l = ks_l - 1
-                    ps_l = p_int_norm_sam(ks_l)
+                do while ((ps_l > pc_l) .and. (ks_l < ks_u))
+                   ks_l = ks_l + 1
+                   ps_l = p_int_norm_sam(ks_l)
                 end do
+                ks_l = max(ks_l - 1,1)
+                ps_l = p_int_norm_sam(ks_l)
 
+                ! NB: ks_u and ks_l are indices of SAM grid at LOWER interface; by design, ks_l <= ks_u if pc_l >= pc_u
+                ! var_sam(UPPER interface index) = var_sam(LOWER interface index + 1) - LOWER interface index equals block index
+                
                 ! Combine all SAM cells that this CAM_CELL(i, k) overlaps
-                var_cam(i,k) = 0.0
-                if (ks_u == ks_l) then
-                    ! CAM cell fully enclosed by SAM cell => match 'density' of SAM cell
-                    var_cam(i,k) = var_cam(i,k) + var_sam(i,ks_u)
+                var_cam(i,k) = 0.0                      
+                if (ks_u - 1 ==  ks_l) then
+
+                   ! CAM block fully enclosed in SAM block
+                   if (ks_u == nrf + 1) then
+                      var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(ks_u-1)-p_int_norm_sam(ks_u))*var_sam(i,ks_u-1) / (pc_l - pc_u)
+                   else
+                      var_cam(i,k) = var_cam(i,k) + var_sam(i, ks_l)   
+                   end if
+                   
                 else
-                  do c = ks_l, ks_u
-                    if (c == ks_l) then
-                      ! Bottom cell
-                      var_cam(i,k) = var_cam(i,k) + (pc_l-p_int_norm_sam(ks_l+1))*var_sam(i,ks_l) / (pc_l - pc_u)
-                    elseif (c == ks_u) then
-                      ! Top cell
-                      var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(ks_u)-pc_u)*var_sam(i, ks_u) / (pc_l - pc_u)
-                    else
-                      ! Intermediate cell (SAM Cell fully enclosed by CAM Cell => Absorb all)
-                      var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(c)-p_int_norm_sam(c+1))*var_sam(i, c) / (pc_l - pc_u)
+                   
+                   do c = ks_l, ks_u-1
 
-                    endif
+                      if (c == ks_l) then
+                         ! Bottom cell (SAM Cell ks_l is truncated at bottom)
+                         var_cam(i,k) = var_cam(i,k) + (pc_l-p_int_norm_sam(ks_l+1))*var_sam(i,ks_l) / (pc_l - pc_u)
+                      elseif (c == ks_u-1) then
+                         ! Top cell (SAM Cell ks_u-1 is truncated at top)
+                         if (ks_u == nrf + 1) then
+                            var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(ks_u-1)-p_int_norm_sam(ks_u))*var_sam(i,ks_u-1) / (pc_l - pc_u)
+                         else                            
+                            var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(ks_u-1)-pc_u)*var_sam(i,ks_u-1) / (pc_l - pc_u)
+                         end if
+                      else
+                         ! Intermediate cell (SAM Cell fully enclosed by CAM Cell => Absorb all)
+                         var_cam(i,k) = var_cam(i,k) + (p_int_norm_sam(c)-p_int_norm_sam(c+1))*var_sam(i, c) / (pc_l - pc_u)
 
-                  enddo
+                      endif
+
+                   enddo
                 endif
             endif
         end do
         end do
 
+        
+        ! Check that CAM = SAM
+        !allocate(sum_cam(ncol_cam))
+        !allocate(sum_sam(ncol_cam))
+        !sum_cam(:) = 0.0
+        !sum_sam(:) = 0.0                   
+        !do i = 1, ncol_cam
+        !   do k = 1, nz_cam
+        !      sum_cam(i) = sum_cam(i)+ (p_int_norm_cam(i,k)-p_int_norm_cam(i,k+1))*var_cam(i, k)
+        !   end do
+        !   do k = 1, nrf
+        !      sum_sam(i) = sum_sam(i)+ (p_int_norm_sam(k)-p_int_norm_sam(k+1))*var_sam(i, k)
+        !   end do           
+        !end do
+        !write(iulog,*)'sum_cam',sum_cam
+        !write(iulog,*)'sum_sam',sum_sam                
+        !deallocate(sum_cam)
+        !deallocate(sum_sam)
+                
         ! Clean up
         deallocate(p_norm_cam)
         deallocate(p_int_norm_cam)
 
-    end subroutine interp_to_cam
+      end subroutine interp_to_cam
 
     subroutine extrapolate_to_surface(p_cam, var_cam, p_surf_cam, var_surf_cam)
         !! Extrapolate variable profile to the surface, required for interpolation.
@@ -491,7 +921,7 @@ contains
         ! Note that nz of sounding may be longer than nrf
         allocate(z(nz_sam))
         allocate(pres(nz_sam))
-        allocate(presi(nz_sam))
+        allocate(presi(nz_sam+1))
         allocate(rho(nz_sam))
         allocate(adz(nz_sam))
         allocate(gamaz(nz_sam))
@@ -501,10 +931,10 @@ contains
         call check( nf90_get_var(ncid, z_varid, z))
         call check( nf90_inq_varid(ncid, "pressure", pres_varid))
         call check( nf90_get_var(ncid, pres_varid, pres))
-        pres(:) = pres / 100.0
+        pres(:) = pres * 100.0 ! XL XL 
         call check( nf90_inq_varid(ncid, "interface_pressure", presi_varid))
         call check( nf90_get_var(ncid, presi_varid, presi))
-        presi(:) = presi(:) / 100.0
+        presi(:) = presi(:) * 100.0 ! XL XL
         call check( nf90_inq_varid(ncid, "rho", rho_varid))
         call check( nf90_get_var(ncid, rho_varid, rho))
         call check( nf90_inq_varid(ncid, "adz", adz_varid))
@@ -532,8 +962,8 @@ contains
 
     end subroutine sam_sounding_finalize
 
-
-    subroutine CAM_var_conversion(qv, qc, qi, r, tabs, t)
+    
+    subroutine CAM_var_conversion(qv, qc, qi, gamaz, r, tabs, t)
         !! Convert CAM moist mixing ratios for species qv, qc, qi to
         !! dry mixing ratio r to used by SAM parameterisation
         !! q is total water qv/c/i is cloud vapor/liquid/ice
@@ -541,8 +971,8 @@ contains
         !! by inverting lines 49-53 of diagnose.f90 from SAM where
 
         !! WARNING: This routine uses gamaz(k) which is defined on the SAM grid.
-        !!          Using a grid that does not match the SAM grid for input/output
-        !!          data will produce unphysical values.
+        !! OR
+        !! The native geopotential height on CAM grid
 
         integer :: ncol, nz
             !! array sizes
@@ -565,6 +995,8 @@ contains
             !! Cloud water from CAM
         real(8), intent(in) :: qi(:, :)
             !! Cloud ice from CAM
+        real(8), intent(in) :: gamaz(:, :)
+            !! Geopotential Height
 
         real(8), intent(out) :: t(:, :)
             !! Static energy as required by SAM NN
@@ -588,14 +1020,14 @@ contains
             t(i,k) = tabs(i,k) &
                    ! - (fac_cond+(1.-omp)*fac_fus)*qp(i,k) &  ! There is no qp in CAM
                      - (fac_cond+(1.-omn)*fac_fus)*(rc + ri) &
-                     + gamaz(k)
+                     + gamaz(i,k)
           end do
         end do
 
     end subroutine CAM_var_conversion
 
 
-    subroutine SAM_var_conversion(t, r, tabs, qv, qc, qi)
+    subroutine SAM_var_conversion(gamaz, pres_cam, t, r, tabs, qv, qc, qi)
         !! Convert SAM t and r to tabs, qv, qc, qi used by CAM
         !! t is normalised liquid ice static energy, r is a dry mixing ratio
         !! tabs is absolute temperature, q is cloud vapor/liquid/ice,
@@ -608,13 +1040,10 @@ contains
         ! ---------------------
         ! Fields from SAM/CAM
         ! ---------------------
-        != unit K :: tabs, tabs1
-        real(8), intent(inout) :: tabs(:, :)
-            !! absolute temperature
-        real(8) :: tabs1
-            !! Temporary variable for tabs
-
+        
         != unit kg/kg :: r, qv, qc, qi
+        real(8), intent(in) :: t(:, :)
+            !! normalised liquid ice static energy (init) XL XL XL               
         real(8), intent(in) :: r(:, :)
             !! Total non-precipitating water mixing ratio from SAM
         real(8), intent(out) :: qv(:, :)
@@ -624,103 +1053,164 @@ contains
         real(8), intent(out) :: qi(:, :)
             !! Cloud ice in CAM
 
+        != unit K :: tabs, tabs1
+        real(8), intent(out) :: tabs(:, :)
+            !! absolute temperature
+        real(8) :: tabs1
+        !! Temporary variable for tabs
+        
         != K :: t
-        real(8), intent(in) :: t(:, :)
-            !! normalised liquid ice static energy
+        real(8), intent(in) :: gamaz(:, :)
+            !! Geopotential Height
 
+        real(8), intent(in) :: pres_cam(:, :)
+        !! Mid-level pressure level
+
+        real(8), allocatable, dimension(:,:) :: pres_m(:, :)
+            !! Mid-level pressure level        
+        
         ! Intermediate variables
         real(8) :: rsat, om, omn, dtabs, drsat, lstarn, dlstarn, fff, dfff, rn, rv, r_temp
-
+        
         ncol = size(tabs, 1)
         nz = size(tabs, 2)
 
+        allocate(pres_m(ncol,nz))
+        
         ! Loop over all cells and iterate until equilibrium of condensed species is achieved.
         ! This code is adapted from cloud.f90 in SAM
         do k = 1, nz
         do i = 1, ncol
+           
+           pres_m(i,k)=pres_cam(i,k)/100._r8
+           ! pres_m(i,k)=pres(k)
+           ! Enforce r >= 0.0
+           r_temp=max(0._r8,r(i,k))
 
-            ! Enforce r >= 0.0
-            r_temp=max(0.,r(i,k))
+           ! Initial guess for temperature assuming no cloud water/ice:
+           tabs(i,k) = t(i,k)-gamaz(i,k)
+           tabs1=tabs(i,k)
 
-            ! Initial guess for temperature assuming no cloud water/ice:
-            tabs(i,k) = t(i,k)-gamaz(k)
-            tabs1=tabs(i,k)
+           ! Set saturation vapour based on cloud type
+           ! Warm cloud:
+           if(tabs1 >= tbgmax) then
+              rsat = rsatw(tabs1,pres_m(i,k))
+           ! Ice cloud:
+           elseif(tabs1 <= tbgmin) then
+              rsat = rsati(tabs1,pres_m(i,k))
+           ! Mixed-phase cloud:
+           else
+              om = an*tabs1-bn
+              rsat = om*rsatw(tabs1,pres_m(i,k))+(1._r8-om)*rsati(tabs1,pres_m(i,k))
+           endif
 
-            ! Set saturation vapour based on cloud type
-            ! Warm cloud:
-            if(tabs1 >= tbgmax) then
-                rsat = rsatw(tabs1,pres(k))
-            ! Ice cloud:
-            elseif(tabs1 <= tbgmin) then
-                rsat = rsati(tabs1,pres(k))
-            ! Mixed-phase cloud:
-            else
-                om = an*tabs1-bn
-                rsat = om*rsatw(tabs1,pres(k))+(1.-om)*rsati(tabs1,pres(k))
-            endif
-
-            !  Test if condensation is possible (humidity is above saturation) and iterate:
-            if(r_temp > rsat) then
-                niter=0
-                dtabs = 100.
-                do while(abs(dtabs) > 0.01 .and. niter < 10)
-                    ! Warm cloud regime
-                    if(tabs1 >= tbgmax) then
-                        om=1.
-                        lstarn=fac_cond
-                        dlstarn=0.
-                        rsat=rsatw(tabs1,pres(k))
-                        drsat=dtrsatw(tabs1,pres(k))
+           !  Test if condensation is possible (humidity is above saturation) and iterate:
+           if(r_temp > rsat) then
+                  
+              dtabs = 100._r8
+              do while(abs(dtabs) > 0.001_r8)                   
+                 ! Warm cloud regime
+                 if(tabs1 >= tbgmax) then
+                    om=1._r8
+                    lstarn=fac_cond
+                    dlstarn=0._r8
+                    rsat=rsatw(tabs1,pres_m(i,k))
+                    drsat=dtrsatw(tabs1,pres_m(i,k))
                     ! Ice cloud regime
-                    else if(tabs1 <= tbgmin) then
-                        om=0.
-                        lstarn=fac_sub
-                        dlstarn=0.
-                        rsat=rsati(tabs1,pres(k))
-                        drsat=dtrsati(tabs1,pres(k))
+                 else if(tabs1 <= tbgmin) then
+                    om=0._r8
+                    lstarn=fac_sub
+                    dlstarn=0._r8
+                    rsat=rsati(tabs1,pres_m(i,k))
+                    drsat=dtrsati(tabs1,pres_m(i,k))
                     ! Mixed cloud regime
-                    else
-                        om=an*tabs1-bn
-                        lstarn=fac_cond+(1.-om)*fac_fus
-                        dlstarn=an
-                        rsat=om*rsatw(tabs1,pres(k))+(1.-om)*rsati(tabs1,pres(k))
-                        drsat=om*dtrsatw(tabs1,pres(k))+(1.-om)*dtrsati(tabs1,pres(k))
-                    endif
+                 else
+                    om=an*tabs1-bn
+                    lstarn=fac_cond+(1._r8-om)*fac_fus
+                    dlstarn=an
+                    rsat=om*rsatw(tabs1,pres_m(i,k))+(1._r8-om)*rsati(tabs1,pres_m(i,k))
+                    drsat=om*dtrsatw(tabs1,pres_m(i,k))+(1._r8-om)*dtrsati(tabs1,pres_m(i,k))
+                 endif
 
-                    ! Update thermodynamics and check for convergence
-                    fff = tabs(i,k)-tabs1+lstarn*(r_temp-rsat)
-                    dfff=dlstarn*(r_temp-rsat)-lstarn*drsat-1.
-                    dtabs=-fff/dfff
-                    niter=niter+1
-                    tabs1=tabs1+dtabs
-               end do
+                 ! Update thermodynamics and check for convergence
+                 fff = tabs(i,k)-tabs1+lstarn*(r_temp-rsat)
+                 dfff=dlstarn*(r_temp-rsat)-lstarn*drsat-1._r8
+                 dtabs=-fff/dfff
+                 tabs1=tabs1+dtabs
+                 ! write(iulog,*)'tabs1,niter',tabs1,niter
+              end do
 
-               ! Update saturation point and then calculate water and residual vapour content
-               rsat = rsat + drsat * dtabs
-               rn = max(0., r_temp-rsat)
-               rv = max(0., r_temp-rn)
-
-            ! If condensation not possible rn is 0.0
-            else
-              rn = 0.
+              ! Update saturation point and then calculate water and residual vapour content
+              rsat = rsat + drsat * dtabs
+              rn = max(0._r8, r_temp-rsat)
+              rv = max(0._r8, r_temp-rn)
+              
+              ! If condensation not possible rn is 0.0
+           else
+              rn = 0._r8
               rv = r_temp
 
-            endif
+           endif
 
-            ! Set tabs to iterated tabs after convection
-            tabs(i,k) = tabs1
-
-            ! Code for calculating qc and qi from rn.
-            ! Adapted from statistics.f90 in SAM assuming dokruegermicro=.false.
-            ! Also implements conversion from SAM dry mixing ratios to CAM moist mixing ratios
-            omn = omegan(tabs(i,k))
-            qc(i,k) = rn*omn/(1.+rv)
-            qi(i,k) = rn*(1.-omn)/(1.+rv)
-            qv(i,k) = rv/(1.+rv)
-
+           ! Set tabs to iterated tabs after convection
+           tabs(i,k) = tabs1
+           
+           ! Code for calculating qc and qi from rn.
+           ! Adapted from statistics.f90 in SAM assuming dokruegermicro=.false.
+           ! Also implements conversion from SAM dry mixing ratios to CAM moist mixing ratios
+           omn = omegan(tabs(i,k))
+           qc(i,k) = rn*omn/(1._r8+rv)
+           qi(i,k) = rn*(1._r8-omn)/(1._r8+rv)
+           qv(i,k) = rv/(1._r8+rv)
+            
         end do
-        end do
+     end do
 
-    end subroutine SAM_var_conversion
+     deallocate(pres_m)
+        
+   end subroutine SAM_var_conversion
 
+    subroutine interp_flux_cam_midpoint(pres_cam, pres_int_cam, pres_sfc_cam, flux_adv_cam_int, flux_adv_cam)
+      
+      real(8), dimension(:,:), intent(in) :: pres_cam, pres_int_cam, flux_adv_cam_int
+      real(8), dimension(:), intent(in) :: pres_sfc_cam
+      real(8), dimension(:,:), intent(out) :: flux_adv_cam
+      real(8), dimension(:,:), allocatable :: p_norm_cam, p_norm_cam_int
+      integer :: i, k, nz, ncol
+      
+      ncol = size(flux_adv_cam_int, 1)
+      nz = size(flux_adv_cam_int, 2)
+      allocate(p_norm_cam(ncol, nz))
+      allocate(p_norm_cam_int(ncol, nz+1))
+      
+      do i = 1,ncol
+         do k=1, nz
+            p_norm_cam(i,k) = pres_cam(i,k) / pres_sfc_cam(i)
+            p_norm_cam_int(i,k) = pres_int_cam(i,k) / pres_sfc_cam(i)
+         end do
+         p_norm_cam_int(i,nz+1) = pres_int_cam(i,nz+1) / pres_sfc_cam(i)
+      end do
+
+      do i = 1,ncol
+         do k=1, nz-1
+            flux_adv_cam(i,k) = flux_adv_cam_int(i,k) + (flux_adv_cam_int(i,k+1)-flux_adv_cam_int(i,k))*(p_norm_cam(i,k)-p_norm_cam_int(i,k))/(p_norm_cam_int(i,k+1)-p_norm_cam_int(i,k))
+         end do
+         flux_adv_cam(i,nz) = flux_adv_cam_int(i,nz) + (0.0-flux_adv_cam_int(i,nz))*(p_norm_cam(i,nz)-p_norm_cam_int(i,nz))/(p_norm_cam_int(i,nz+1)-p_norm_cam_int(i,nz))     
+      end do                  
+
+      deallocate(p_norm_cam)
+      deallocate(p_norm_cam_int)
+      
+    end subroutine interp_flux_cam_midpoint
+!        ! We interpolate from lower level interface to mid level in SAM grid
+!        call interp_sam_lower2mid(t_flux_adv_sam_f, t_flux_adv_sam)
+!        call interp_sam_lower2mid(q_flux_adv_sam_f, q_flux_adv_sam)
+!        call interp_sam_lower2mid(q_sed_flux_sam_f, q_sed_flux_sam)        
+        ! We interpolate from mid level to lower level interface in CAM grid
+!        call interp_cam_mid2lower(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), t_flux_adv_sam_f(1:ncol,1), t_flux_adv, t_flux_adv_f)
+!        call interp_cam_mid2lower(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), q_flux_adv_sam_f(1:ncol,1), q_flux_adv, q_flux_adv_f)
+!        call interp_cam_mid2lower(pres_cam(1:ncol, :), pres_int_cam(1:ncol, :), pres_sfc_cam(1:ncol), q_sed_flux_sam_f(1:ncol,1), q_sed_flux, q_sed_flux_f)       
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
 end module nn_interface_CAM

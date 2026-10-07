@@ -81,17 +81,16 @@ module SAM_consts_mod
 
   ! ---------------------------
   ! SAM Grid Variables
-  ! ---------------------------
-  integer, parameter :: input_ver_dim = 30
-      !! The number of cells in a SAM atmospheric column on which the neural net was trained
-  
-  ! Outputs from NN are supplied at lowest 30 half-model levels for sedimentation fluxes,
-  ! and at 29 levels for fluxes (as flux at bottom boundary is zero).
-  integer, parameter :: nrf = 30
+  ! ---------------------------  
+  ! Outputs from NN are supplied at lowest half-model levels for sedimentation fluxes,
+  ! and at interface levels for fluxes (as flux at bottom boundary is zero).
+  integer, parameter :: nrf = 49
       !! number of vertical levels the NN uses
   integer, parameter :: nrfq = nrf - 1
       !! number of vertical levels the NN uses when boundary condition is set to 0
-
+  integer, parameter :: input_ver_dim = nrf
+      !! The number of cells in a SAM atmospheric column on which the neural net was trained
+  
   real(8), parameter :: dt_sam = 24.0
       !! SAM timestep in seconds
 
