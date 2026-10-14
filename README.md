@@ -4,15 +4,12 @@ This Fork of the CAM model implements a [new convection parameterisation, YOG](h
 The parameterisation is a machine learning implementation using a neural net trained
 on high-resolution cloud-resolving simulations in the SAM model as described in:
 
-- Yuval, J., O’Gorman, P.A.
-  _Stable machine-learning parameterization of subgrid processes for climate modeling at
-  a range of resolutions_
-  Nat Commun 11, 3295 (2020). DOI: [10.1038/s41467-020-17142-3](https://doi.org/10.1038/s41467-020-17142-3)
-- Yuval, J., O'Gorman, P.A., Hill, C.N.
-  _Use of Neural Networks for Stable, Accurate and Physically Consistent Parameterization of Subgrid Atmospheric Processes With Good Performance at Reduced Precision_
-  Geophysical Research Letters, 48, e2020GL091363 (2021). DOI: [10.1029/2020GL091363](https://doi.org/10.1029/2020GL091363)
+- Levine, X.J., Mooers, G., Berner, J., Atkinson, J.W., Khairoutdinov, M.F., Yuval, J., Orchard, D., O’Gorman P.A.:
+_Improved Precipitation Variability in the Community Atmosphere Model through Implementation of a Neural-Network Deep
+Convection Scheme_ Journal of Advances in Modeling Earth Systems. In Review.  DOI: [10.1038/s41467-020-17142-3](https://doi.org/10.1038/s41467-020-17142-3)
 
-The work is contained in a `CAM-ML` branch which is based off the `cam_cesm2_1_rel_60` tag.
+
+The work is contained in a `cam-nn-v85` branch which is based off the `cam_cesm2_1_rel_60` tag.
 
 Note that the `doc` folder and `README_EXTERNALS` are not updated, but just artifacts from the fork that we are keeping to be able to merge back to CESM later.
 Information specific to running this fork of CAM within CESM is included in this README.
